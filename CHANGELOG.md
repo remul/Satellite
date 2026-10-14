@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- Fixed: addons whose minimap button has another name than their broker button (RareScanner)
+  weren't put in the menu, and their minimap button stayed.
+
 ## 0.3.1
 
 - **Circle** is the menu buttons' shape at first.

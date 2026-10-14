@@ -33,13 +33,30 @@ local hiddenParent = CreateFrame("Frame")
 hiddenParent:Hide()
 local originalParents = {}
 
--- Hides or shows the addon's own minimap button for the object name, as the settings say.
-local function UpdateMinimapButton(name)
-    local minimapButton = LibDBIcon:GetMinimapButton(name)
-    if not minimapButton then
-        return
+-- LibDBIcon's minimap button for an object name, or nil. The button's name in LibDBIcon may
+-- differ from the object's (RareScanner's object is RareScannerLDB, its button
+-- RareScannerMinimapIcon), so it's found by the object it draws.
+local function GetMinimapButton(name)
+    local dataObject = LDB:GetDataObjectByName(name)
+    if not dataObject then
+        return nil
     end
-    local button = ns.Buttons.Get("ldb:" .. name)
+    local minimapButton = LibDBIcon:GetMinimapButton(name)
+    if minimapButton and minimapButton.dataObject == dataObject then
+        return minimapButton
+    end
+    for _, other in pairs(LibDBIcon.objects) do
+        if other.dataObject == dataObject then
+            return other
+        end
+    end
+    return nil
+end
+
+-- Hides or shows the addon's own minimap button, as the settings say.
+local function UpdateMinimapButton(minimapButton)
+    local name = minimapButton.dataObject and LDB:GetNameByDataObject(minimapButton.dataObject)
+    local button = name and ns.Buttons.Get("ldb:" .. name)
     local hide = ns.db.hideMinimapButtons and button ~= nil and ns.Buttons.IsInLauncher(button)
     -- Checks where it is each time: another button collector may have moved it since.
     local parent = minimapButton:GetParent()
@@ -59,14 +76,14 @@ end
 
 -- Hides or shows every addon's own minimap button, after the settings or buttons changed.
 function Broker.UpdateMinimapButtons()
-    for name in pairs(LibDBIcon.objects) do
-        UpdateMinimapButton(name)
+    for _, minimapButton in pairs(LibDBIcon.objects) do
+        UpdateMinimapButton(minimapButton)
     end
 end
 
 -- Whether the addon shows this object as a button on the minimap (with LibDBIcon).
 function Broker.HasMinimapButton(button)
-    return LibDBIcon:GetMinimapButton(button.name) ~= nil
+    return GetMinimapButton(button.name) ~= nil
 end
 
 -- Called once ns.db is loaded.
@@ -82,8 +99,8 @@ function Broker:Setup()
     end)
     -- CallbackHandler adds RegisterCallback to LibDBIcon when it loads; the IDE can't see it.
     ---@diagnostic disable-next-line: undefined-field
-    LibDBIcon.RegisterCallback(self, "LibDBIcon_IconCreated", function(_, _, name)
-        UpdateMinimapButton(name)
+    LibDBIcon.RegisterCallback(self, "LibDBIcon_IconCreated", function(_, minimapButton)
+        UpdateMinimapButton(minimapButton)
         -- Now that it has a minimap button, the launcher shows it.
         ns.Buttons.NotifyChanged()
     end)

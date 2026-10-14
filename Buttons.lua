@@ -6,8 +6,6 @@ local _, ns = ...
 local Buttons = {}
 ns.Buttons = Buttons
 
-local LibDBIcon = LibStub("LibDBIcon-1.0")
-
 -- [key] = { key, source, name, label, ... }; the fields after label depend on the source.
 local buttons = {}
 -- All buttons sorted by label, made again only after a change (see GetAll).
@@ -117,7 +115,7 @@ function Buttons.IsInLauncher(button)
     if button.source == "blizzard" then
         return ns.db.includeExpansionButton
     end
-    if button.source == "ldb" and LibDBIcon:GetMinimapButton(button.name) then
+    if button.source == "ldb" and ns.Broker.HasMinimapButton(button) then
         return true
     end
     return ns.db.showWithoutMinimapButton
