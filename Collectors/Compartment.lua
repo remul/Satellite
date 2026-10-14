@@ -49,16 +49,29 @@ local function GetLibDBIconEntries()
 end
 
 -- A name to compare: lower case, letters and digits only ("Foo Bar" and "FooBar" are the same).
+-- Also for Handmade.
 local function Simplify(text)
     return (PlainText(text):lower():gsub("[^%w]", ""))
 end
 
+-- [icon] = its folder, simplified (false: none); icons are few and asked for often.
+local iconFolders = {}
+
 -- The addon folder an icon is in (Interface\AddOns\<folder>\...), simplified, or nil: the icon
 -- tells which addon it belongs to.
 local function GetIconFolder(icon)
-    local folder = type(icon) == "string" and icon:match("[Aa][Dd][Dd][Oo][Nn][Ss][\\/]([^\\/]+)")
-    return folder and Simplify(folder)
+    if type(icon) ~= "string" then
+        return nil
+    end
+    if iconFolders[icon] == nil then
+        local folder = icon:match("[Aa][Dd][Dd][Oo][Nn][Ss][\\/]([^\\/]+)")
+        iconFolders[icon] = folder and Simplify(folder) or false
+    end
+    return iconFolders[icon] or nil
 end
+
+Compartment.Simplify = Simplify
+Compartment.GetIconFolder = GetIconFolder
 
 -- What tells the LibDataBroker objects' addons apart, simplified: their names and labels, and the
 -- folders of their icons: [text] = true. Many addons have both an object and a compartment entry

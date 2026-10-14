@@ -33,24 +33,22 @@ local hiddenParent = CreateFrame("Frame")
 hiddenParent:Hide()
 local originalParents = {}
 
--- LibDBIcon's minimap button for an object name, or nil. The button's name in LibDBIcon may
--- differ from the object's (RareScanner's object is RareScannerLDB, its button
--- RareScannerMinimapIcon), so it's found by the object it draws.
-local function GetMinimapButton(name)
-    local dataObject = LDB:GetDataObjectByName(name)
-    if not dataObject then
-        return nil
-    end
-    local minimapButton = LibDBIcon:GetMinimapButton(name)
-    if minimapButton and minimapButton.dataObject == dataObject then
-        return minimapButton
-    end
-    for _, other in pairs(LibDBIcon.objects) do
-        if other.dataObject == dataObject then
-            return other
+-- LibDBIcon's minimap buttons by the object they draw: [dataObject] = button. A button's name in
+-- LibDBIcon may differ from its object's (RareScanner's object is RareScannerLDB, its button
+-- RareScannerMinimapIcon). Made again after LibDBIcon made a new button.
+local minimapButtons
+
+-- LibDBIcon's minimap button for dataObject, or nil.
+function Broker.GetMinimapButton(dataObject)
+    if not minimapButtons then
+        minimapButtons = {}
+        for _, minimapButton in pairs(LibDBIcon.objects) do
+            if minimapButton.dataObject then
+                minimapButtons[minimapButton.dataObject] = minimapButton
+            end
         end
     end
-    return nil
+    return minimapButtons[dataObject]
 end
 
 -- Hides or shows the addon's own minimap button, as the settings say.
@@ -83,7 +81,7 @@ end
 
 -- Whether the addon shows this object as a button on the minimap (with LibDBIcon).
 function Broker.HasMinimapButton(button)
-    return GetMinimapButton(button.name) ~= nil
+    return Broker.GetMinimapButton(button.dataObject) ~= nil
 end
 
 -- Called once ns.db is loaded.
@@ -100,6 +98,7 @@ function Broker:Setup()
     -- CallbackHandler adds RegisterCallback to LibDBIcon when it loads; the IDE can't see it.
     ---@diagnostic disable-next-line: undefined-field
     LibDBIcon.RegisterCallback(self, "LibDBIcon_IconCreated", function(_, minimapButton)
+        minimapButtons = nil
         UpdateMinimapButton(minimapButton)
         -- Now that it has a minimap button, the launcher shows it.
         ns.Buttons.NotifyChanged()

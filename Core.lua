@@ -49,8 +49,8 @@ local DEFAULTS = {
     -- Whether the launcher stays where it is; unlocked, it moves when dragged (with Shift, it
     -- always does).
     locked = true,
-    -- The menu's buttons in the player's order (keys), and the ones they hid: [key] = true (see
-    -- Buttons.GetCandidates).
+    -- The menu's buttons in the player's order (keys), and the ones they hid: [key] = true, or
+    -- false for one hidden by default that they put in (see Buttons.IsHidden).
     buttonOrder = {},
     hiddenButtons = {},
     -- When each of those keys' buttons was last there: [key] = time(). Keys not seen for a while
@@ -75,6 +75,9 @@ local DEFAULTS = {
     showAlerts = true,
     -- Hide the addons' own LibDBIcon minimap buttons while the launcher shows them.
     hideMinimapButtons = true,
+    -- Also move the minimap buttons that addons make by hand into the menu, while their own
+    -- buttons are hidden (see Collectors/Handmade.lua).
+    collectHandmadeButtons = true,
     -- Also show addons without a minimap button: only in the addon compartment, or LibDataBroker
     -- objects only for broker displays (see Buttons.IsInLauncher).
     showWithoutMinimapButton = false,
@@ -155,7 +158,7 @@ end
 
 -- Prints the buttons Satellite found, to check what it collects.
 function ns.PrintButtons()
-    -- Hand-made minimap buttons are only looked for now (see Collectors/Scan.lua).
+    -- Looks for hand-made minimap buttons now, to list the newest.
     ns.Scan.Run()
     local list = ns.Buttons.GetAll()
     if #list == 0 then
@@ -201,6 +204,8 @@ function ns:ADDON_LOADED(loadedName)
     ns.Broker:Setup()
     ns.Compartment:Setup()
     ns.Blizzard:Setup()
+    ns.Scan:Setup()
+    ns.Handmade:Setup()
     ns.Buttons:Setup()
     ns.Launcher:Setup()
 end

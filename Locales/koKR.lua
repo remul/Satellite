@@ -90,7 +90,9 @@ ns.RegisterLocale("koKR", {
     ["Show a dot when an addon's icon changes"] = "애드온 아이콘이 바뀌면 점 표시",
     ["Lock position"] = "위치 잠금",
     ["Shift-drag still moves it."] = "Shift를 누른 채 끌면 여전히 옮길 수 있습니다.",
-    ["Untick a button to take it out of the menu. Drag a row, or use its arrows, to change the order."] = "버튼의 체크를 해제하면 메뉴에서 빠집니다. 줄을 끌거나 화살표를 눌러 순서를 바꾸세요.",
+    ["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."] = "체크를 해제하면 버튼이 메뉴에서 빠지며, 직접 만든 버튼은 미니맵으로 돌아갑니다. 줄을 끌거나 화살표를 사용해 순서를 바꾸세요.",
     ["Launcher settings"] = "실행기 설정",
     ["Or right-click the launcher."] = "또는 실행기를 오른쪽 클릭하세요.",
+    ["Collect hand-made minimap buttons"] = "직접 만든 미니맵 버튼 모으기",
+    ["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."] = "애드온이 일반적인 라이브러리 없이 직접 만든 버튼입니다. Satellite가 메뉴로 옮기며, 이전처럼 작동합니다. 애드온 자체 미니맵 버튼을 숨긴 동안에만 적용됩니다.",
 })

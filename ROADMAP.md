@@ -9,14 +9,15 @@ menu.
 
 ## Collecting buttons
 
-LibDataBroker objects, the addon compartment and Blizzard's expansion button are collected (see
-`Collectors/`); each entry has a stable key, so order and settings survive reloads. Still to do:
+LibDataBroker objects, the addon compartment, Blizzard's expansion button and hand-made minimap
+buttons are collected (see `Collectors/`); each entry has a stable key, so order and settings
+survive reloads. Still to do:
 
-- **Hand-made minimap buttons** (`frame:<name>`): the scan finds them, but only on demand
-  (`/satellite list`, `/satellite scan`), and they're only listed. Bring them into the menu with
-  the player's OK: reparent, and hook `SetPoint`/`SetParent` only on collected frames. Never move
-  protected frames, and nothing in combat (wait for `PLAYER_REGEN_ENABLED`). Check the
-  HereBeDragons pin table (`minimapPins`) against the real library with TomTom or HandyNotes.
+- **Hand-made buttons**: check in game with Battle Pet Statistics and the test buttons
+  (`/satellite test buttons`), including their tooltips, right-click menus and icon changes.
+  Check the HereBeDragons pin table (`minimapPins`) against the real library with TomTom or
+  HandyNotes. Plumber's own button starts unticked, on the minimap (`STAY_ON_MINIMAP` in
+  `Collectors/Handmade.lua`); its LibDBIcon button is in the menu.
 
 ## Buttons
 

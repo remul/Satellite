@@ -63,10 +63,7 @@ function Buttons.Add(button)
     if not old then
         ns:Debug("Found", button.key)
     end
-    -- Buttons the minimap scan finds are only listed (see IsInLauncher): nothing to redraw.
-    if button.source ~= "frame" then
-        Buttons.NotifyChanged()
-    end
+    Buttons.NotifyChanged()
     return old == nil
 end
 
@@ -105,11 +102,10 @@ end
 -- Whether the launcher shows button: every addon with a minimap button (LibDBIcon draws it for
 -- LibDataBroker objects of any type; BugSack's is a data source). Addons without one (only in the
 -- addon compartment, or only for broker displays like Titan Panel) when the player wants them.
--- Buttons found by the minimap scan not yet: they'd have to be moved, which needs the player's
--- OK first.
+-- Hand-made buttons found by the minimap scan as Handmade says.
 function Buttons.IsInLauncher(button)
     if button.source == "frame" then
-        return false
+        return ns.Handmade.IsCollected(button)
     end
     -- Blizzard's expansion button (collected only while it's on the minimap) when the player wants it.
     if button.source == "blizzard" then
@@ -123,7 +119,8 @@ end
 
 -- The player's order and hidden buttons --------------------------------------------------------
 -- ns.db.buttonOrder lists keys in the player's order; buttons not in it come after, by name.
--- ns.db.hiddenButtons: [key] = true for the buttons the player took out of the menu.
+-- ns.db.hiddenButtons: [key] = true for the buttons the player took out of the menu (false for
+-- one hidden by default that they put in, see IsHidden).
 
 -- The buttons that can be in the menu, hidden ones too, in the player's order.
 function Buttons.GetCandidates()
@@ -161,12 +158,28 @@ function Buttons.GetLauncherButtons()
     return list
 end
 
+-- Whether the button with key is hidden without the player saying (see Handmade.IsHiddenByDefault).
+local function IsHiddenByDefault(key)
+    local button = buttons[key]
+    return button ~= nil and button.source == "frame" and ns.Handmade.IsHiddenByDefault(button)
+end
+
+-- Whether the player took the button out of the menu (a hand-made one is back on the minimap
+-- then). ns.db.hiddenButtons has true for hidden, or false for shown when it's hidden by default.
 function Buttons.IsHidden(key)
-    return ns.db.hiddenButtons[key] == true
+    local isHidden = ns.db.hiddenButtons[key]
+    if isHidden == nil then
+        return IsHiddenByDefault(key)
+    end
+    return isHidden
 end
 
 function Buttons.SetHidden(key, isHidden)
-    ns.db.hiddenButtons[key] = isHidden or nil
+    if isHidden == IsHiddenByDefault(key) then
+        ns.db.hiddenButtons[key] = nil
+    else
+        ns.db.hiddenButtons[key] = isHidden
+    end
     Buttons.NotifyChanged()
 end
 

@@ -26,6 +26,7 @@ local SORT_WIDTH = 150
 -- UI/Options.lua).
 local BUTTON_OPTIONS = {
     { "hideMinimapButtons", "Hide the addons' own minimap buttons" },
+    { "collectHandmadeButtons", "Collect hand-made minimap buttons" },
     { "showWithoutMinimapButton", "Show addons without a minimap button" },
     { "includeExpansionButton", "Include Blizzard's expansion button" },
 }
@@ -359,7 +360,7 @@ local function CreateButtonsPage()
     page.hint:SetPoint("TOPLEFT")
     page.hint:SetWidth(GetListWidth())
     page.hint:SetJustifyH("LEFT")
-    page.hint:SetText(L["Untick a button to take it out of the menu. Drag a row, or use its arrows, to change the order."])
+    page.hint:SetText(L["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."])
 
     -- The list, with a thin scroll bar on its right.
     page.scrollBox = CreateFrame("Frame", nil, page, "WowScrollBoxList")

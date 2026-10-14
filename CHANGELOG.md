@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- **Hand-made minimap buttons**: buttons that addons make themselves, without LibDBIcon (e.g.
+  Battle Pet Statistics), move into the menu too. They keep their own clicks, tooltip and
+  menus, and go back to their place on the minimap when you untick them in the Buttons tab or
+  turn off "Collect hand-made minimap buttons" (on at first).
+- Buttons of addons that also have a LibDBIcon button (like Plumber's) start unticked, so they
+  don't show twice.
+- The minimap is looked at for new buttons after login and whenever an addon loads.
+- Less work when addons change their buttons often.
+
 ## 0.3.2
 
 - Fixed: addons whose minimap button has another name than their broker button (RareScanner)

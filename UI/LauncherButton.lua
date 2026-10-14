@@ -53,6 +53,12 @@ function LauncherButton.SetIconTexture(icon, button)
         texture = button.entry.icon
     elseif button.source == "blizzard" then
         texture = ns.Blizzard.GetIcon(button)
+    elseif button.source == "frame" then
+        -- The icon on the addon's own frame as it is, with its own crop and colour.
+        if ns.Handmade.CopyIcon(icon, button) then
+            return
+        end
+        texture = ns.Handmade.GetFallbackIcon(button)
     end
     if type(texture) == "string" and C_Texture.GetAtlasInfo(texture) then
         icon:SetAtlas(texture)
@@ -92,12 +98,19 @@ function LauncherButton.GetIconLook(button)
         return tostring(button.entry.icon)
     elseif button.source == "blizzard" then
         return tostring(ns.Blizzard.GetIcon(button))
+    elseif button.source == "frame" then
+        return ns.Handmade.GetIconLook(button)
     end
     return ""
 end
 
 local function SetIcon(self)
     LauncherButton.SetIconTexture(self.icon, self.button)
+end
+
+-- The menu's button with key, or nil if it has none yet.
+function LauncherButton.GetFrame(key)
+    return frames[key]
 end
 
 -- Draws the icon again for the menu's button with key, if it has one (its art changed).
@@ -155,8 +168,23 @@ local function OnLeave(self)
     end
 end
 
+-- After a click on the menu's button (or on a hand-made button's own frame over it, see
+-- Handmade): most clicks open something, so the menu closes (a setting). Not on right-click:
+-- addons often open a menu there, attached to the button. Nor while the settings are open.
+function LauncherButton.AfterClick(self, mouseButton)
+    if mouseButton == "LeftButton" and ns.db.closeOnClick and not ns.Settings.IsShown() then
+        -- Its tooltip, or the hand-made frame's over it.
+        local owner = GameTooltip:GetOwner()
+        if owner and (owner == self or owner:GetParent() == self) then
+            GameTooltip:Hide()
+        end
+        ns.Menu.Close()
+    end
+end
+
 -- Passes the click on as the addon's own button would: LibDataBroker's OnClick, the compartment's
--- func as Blizzard's menu calls it, or Blizzard's expansion button's.
+-- func as Blizzard's menu calls it, or Blizzard's expansion button's. A hand-made button's own
+-- frame lies over this one and takes its clicks.
 local function OnClick(self, mouseButton)
     local button = self.button
     if button.source == "ldb" and button.dataObject.OnClick then
@@ -166,14 +194,7 @@ local function OnClick(self, mouseButton)
     elseif button.source == "blizzard" then
         ns.Blizzard.Click(button)
     end
-    -- Most clicks open something, and the minimap can come back (a setting). Not on right-click:
-    -- addons often open a menu there, attached to this button. Nor while the settings are open.
-    if mouseButton == "LeftButton" and ns.db.closeOnClick and not ns.Settings.IsShown() then
-        if GameTooltip:IsOwned(self) then
-            GameTooltip:Hide()
-        end
-        ns.Menu.Close()
-    end
+    LauncherButton.AfterClick(self, mouseButton)
 end
 
 local function CreateAppearAnimation(self)

@@ -1,10 +1,11 @@
 local addonName, ns = ...
 
 -- Finds minimap buttons that addons make by hand, without LibDataBroker: frames on the minimap
--- that look like a button. The minimap also holds Blizzard's own frames and, with addons like
--- TomTom, HandyNotes or GatherMate, hundreds of map pins; the checks below keep those out. A
--- frame is only listed here; nothing is moved yet. So it only runs when asked (/satellite list
--- and /satellite scan), not in the background.
+-- that look like a button (Handmade brings them into the menu). The minimap also holds
+-- Blizzard's own frames and, with addons like TomTom, HandyNotes or GatherMate, hundreds of map
+-- pins; the checks below keep those out, and frames that can never be a button are skipped at
+-- once next time. It runs a few times after login and after an addon loads later on (see Setup),
+-- and when asked (/satellite list and /satellite scan).
 local Scan = {}
 ns.Scan = Scan
 
@@ -74,9 +75,8 @@ local function LooksLikeButton(frame)
 end
 
 -- The addon's title (without colours) for its button's label, or the frame's name.
-local function GetLabel(name)
-    local _, addon = issecurevariable(name)
-    if addon and addon ~= addonName then
+local function GetLabel(name, addon)
+    if addon then
         local _, title = C_AddOns.GetAddOnInfo(addon)
         if title then
             return strtrim(C_StringUtil.StripHyperlinks(title))
@@ -110,14 +110,21 @@ local function ScanChildren(parent)
             elseif LooksLikeButton(frame) then
                 local key = "frame:" .. name
                 if not ns.Buttons.Get(key) then
-                    local label = GetLabel(name)
-                    ns.Buttons.Add({
+                    -- The addon that made it (it set the frame's global name).
+                    local _, addon = issecurevariable(name)
+                    if addon == addonName then
+                        addon = nil
+                    end
+                    local button = {
                         key = key,
                         source = "frame",
                         name = name,
-                        label = label,
+                        label = GetLabel(name, addon),
+                        addon = addon,
                         frame = frame,
-                    })
+                    }
+                    ns.Handmade.Watch(button)
+                    ns.Buttons.Add(button)
                 end
                 stats.found = stats.found + 1
             end
@@ -146,4 +153,31 @@ function Scan.PrintRun()
     local result = Scan.Run()
     ns:Print(format("Scan: %d checked, %d skipped (known), %d buttons, %.2f ms",
         result.checked, result.skipped, result.found, result.milliseconds))
+end
+
+-- Addons make their buttons as they load, some only once the player is in the world: the minimap
+-- is looked at this many seconds after login, and this long after an addon loads later on.
+local LOGIN_SCANS = { 1, 4, 12 }
+local LOAD_DELAY = 2
+local isScanPending = false
+
+local function RequestScan()
+    if isScanPending then
+        return
+    end
+    isScanPending = true
+    C_Timer.After(LOAD_DELAY, function()
+        isScanPending = false
+        Scan.Run()
+    end)
+end
+
+-- Called once ns.db is loaded.
+function Scan:Setup()
+    ns:RegisterEvent("PLAYER_LOGIN", function()
+        for _, delay in ipairs(LOGIN_SCANS) do
+            C_Timer.After(delay, Scan.Run)
+        end
+        ns:RegisterEvent("ADDON_LOADED", RequestScan)
+    end)
 end

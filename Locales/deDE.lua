@@ -90,7 +90,9 @@ ns.RegisterLocale("deDE", {
     ["Show a dot when an addon's icon changes"] = "Punkt zeigen, wenn sich das Symbol eines Addons ändert",
     ["Lock position"] = "Position sperren",
     ["Shift-drag still moves it."] = "Mit Umschalt ziehen verschiebt ihn trotzdem.",
-    ["Untick a button to take it out of the menu. Drag a row, or use its arrows, to change the order."] = "Entferne den Haken, um einen Button aus dem Menü zu nehmen. Ziehe eine Zeile oder nutze ihre Pfeile, um die Reihenfolge zu ändern.",
+    ["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."] = "Entferne den Haken, um einen Button aus dem Menü zu nehmen; ein selbstgebauter kommt zurück auf die Minikarte. Ziehe eine Zeile oder nutze ihre Pfeile, um die Reihenfolge zu ändern.",
     ["Launcher settings"] = "Starter-Einstellungen",
     ["Or right-click the launcher."] = "Oder Rechtsklick auf den Starter.",
+    ["Collect hand-made minimap buttons"] = "Selbstgebaute Minikarten-Buttons sammeln",
+    ["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."] = "Buttons, die Addons ohne die übliche Bibliothek bauen. Satellite verschiebt sie in sein Menü, wo sie wie gewohnt funktionieren. Nur solange die eigenen Minikarten-Buttons der Addons ausgeblendet sind.",
 })

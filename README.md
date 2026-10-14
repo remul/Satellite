@@ -31,8 +31,9 @@ open). The menu stays open while you change things, so you see them at once.
     buttons go down each column, and what it shows (icons, icons and names, or names only).
 - **Buttons** tab: untick buttons to take them out of the menu, drag them or use the arrows to
   change the order, or sort them by name again. Below the list: hide the addons' own minimap
-  buttons (or keep them), show addons without a minimap button too (only in the addon
-  compartment, or only for broker displays), and include Blizzard's expansion button.
+  buttons (or keep them), collect hand-made minimap buttons too, show addons without a minimap
+  button too (only in the addon compartment, or only for broker displays), and include
+  Blizzard's expansion button.
 - **Behavior** tab:
   - Open the menu on mouseover; close it after you click a button (on at first, never on
     right-click) or when the mouse leaves; for the circle and square, which way it opens:
@@ -50,6 +51,11 @@ a button that opens the launcher settings.
 
 - The launchers you can put anywhere (circle, square, side bar, the menu always open) are drawn
   above the action bars.
+- Hand-made minimap buttons (addons that make their own, without LibDBIcon) are moved into the
+  menu as they are: they keep their own clicks, tooltip and menus. Satellite stops the addon
+  from moving them back while they're there. Untick one in the Buttons tab, or turn the option
+  off, and it goes back to its place on the minimap. Buttons of addons that also have a
+  LibDBIcon button (like Plumber's) start unticked, so they don't show twice.
 - In combat, `/satellite` opens the launcher settings: Blizzard's Options can't open then.
 - Order and hidden buttons are kept while an addon is turned off; after 30 days without it,
   they're forgotten.

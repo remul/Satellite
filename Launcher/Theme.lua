@@ -28,7 +28,6 @@ Theme.FILL = CreateColor(0.15, 0.105, 0.06, 0.95)
 Theme.STRATA = "HIGH"
 
 -- While hovered, things light up.
-Theme.SILVER_HOVER = CreateColor(0.9, 0.9, 0.94, 1)
 Theme.GOLD_HOVER = CreateColor(1, 0.88, 0.5, 1)
 Theme.FILL_HOVER = CreateColor(0.21, 0.15, 0.09, 0.95)
 

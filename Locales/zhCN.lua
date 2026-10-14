@@ -90,7 +90,9 @@ ns.RegisterLocale("zhCN", {
     ["Show a dot when an addon's icon changes"] = "插件图标变化时显示圆点",
     ["Lock position"] = "锁定位置",
     ["Shift-drag still moves it."] = "按住 Shift 拖动仍可移动。",
-    ["Untick a button to take it out of the menu. Drag a row, or use its arrows, to change the order."] = "取消勾选可将按钮移出菜单。拖动一行或使用其箭头可调整顺序。",
+    ["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."] = "取消勾选可将按钮移出菜单；自制的按钮会回到小地图上。拖动一行或使用其箭头来调整顺序。",
     ["Launcher settings"] = "启动器设置",
     ["Or right-click the launcher."] = "或右键点击启动器。",
+    ["Collect hand-made minimap buttons"] = "收集自制的小地图按钮",
+    ["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."] = "插件不使用常用库自行制作的按钮。Satellite 会把它们移到自己的菜单中，用法与之前相同。仅在隐藏插件自己的小地图按钮时生效。",
 })

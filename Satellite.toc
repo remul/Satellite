@@ -2,7 +2,7 @@
 ## Title: Satellite
 ## Notes: Gathers the minimap buttons of your addons into one launcher.
 ## Author: Remul
-## Version: 0.3.2
+## Version: 0.4.0
 ## SavedVariables: SatelliteDB
 ## IconTexture: Interface\AddOns\Satellite\Media\Icon
 ## AddonCompartmentFunc: Satellite_OnAddonCompartmentClick
@@ -39,6 +39,7 @@ Collectors\Broker.lua
 Collectors\Compartment.lua
 Collectors\Blizzard.lua
 Collectors\Scan.lua
+Collectors\Handmade.lua
 Debug\Test.lua
 UI\LauncherButton.lua
 Launcher\Theme.lua

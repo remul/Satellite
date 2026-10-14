@@ -90,7 +90,9 @@ ns.RegisterLocale("ruRU", {
     ["Show a dot when an addon's icon changes"] = "Показывать точку, когда значок аддона меняется",
     ["Lock position"] = "Закрепить позицию",
     ["Shift-drag still moves it."] = "Shift+перетаскивание всё равно её двигает.",
-    ["Untick a button to take it out of the menu. Drag a row, or use its arrows, to change the order."] = "Снимите галочку, чтобы убрать кнопку из меню. Перетащите строку или используйте её стрелки, чтобы изменить порядок.",
+    ["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."] = "Снимите отметку, чтобы убрать кнопку из меню; самодельная вернётся на миникарту. Перетащите строку или используйте её стрелки, чтобы изменить порядок.",
     ["Launcher settings"] = "Настройки кнопки запуска",
     ["Or right-click the launcher."] = "Или ПКМ по кнопке запуска.",
+    ["Collect hand-made minimap buttons"] = "Собирать самодельные кнопки миникарты",
+    ["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."] = "Кнопки, которые модификации создают без обычной библиотеки. Satellite переносит их в своё меню, где они работают как прежде. Только пока собственные кнопки модификаций у миникарты скрыты.",
 })

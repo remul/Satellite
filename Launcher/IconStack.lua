@@ -218,7 +218,6 @@ function IconStack.Layout(stack, arrangement, buttonSize, x, y)
     Place(stack)
 end
 
--- From not spread (0) to spread (1).
 -- From not spread (0) to spread (1), and turned by angle (radians, counterclockwise; 0 if nil)
 -- while the discs orbit.
 function IconStack.SetSpread(stack, t, angle)

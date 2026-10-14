@@ -90,9 +90,11 @@ local strings = {
     ["Show a dot when an addon's icon changes"] = "Mostrar un punto cuando cambia el icono de un addon",
     ["Lock position"] = "Bloquear posición",
     ["Shift-drag still moves it."] = "Mayús + arrastrar lo mueve igualmente.",
-    ["Untick a button to take it out of the menu. Drag a row, or use its arrows, to change the order."] = "Desmarca un botón para quitarlo del menú. Arrastra una fila, o usa sus flechas, para cambiar el orden.",
+    ["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."] = "Desmarca un botón para quitarlo del menú; uno hecho a mano vuelve al minimapa. Arrastra una fila, o usa sus flechas, para cambiar el orden.",
     ["Launcher settings"] = "Opciones del lanzador",
     ["Or right-click the launcher."] = "O clic derecho en el lanzador.",
+    ["Collect hand-made minimap buttons"] = "Recoger los botones del minimapa hechos a mano",
+    ["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."] = "Botones que los accesorios crean sin la biblioteca habitual. Satellite los mueve a su menú, donde funcionan como antes. Solo mientras los botones del minimapa de los accesorios estén ocultos.",
 }
 
 ns.RegisterLocale("esES", strings)

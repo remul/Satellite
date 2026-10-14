@@ -180,6 +180,10 @@ local function UpdateButtons(withAnimation)
         buttonFrame:ClearAllPoints()
         buttonFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING + column * layout.cellX,
             -PADDING - row * layout.cell)
+        -- A hand-made button's own frame goes over it, once it's sized and in its layer.
+        if button.source == "frame" then
+            ns.Handmade.Attach(button, buttonFrame)
+        end
         keys[button.key] = true
         shownFrames[index] = buttonFrame
         if isOpen then

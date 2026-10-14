@@ -90,7 +90,9 @@ ns.RegisterLocale("itIT", {
     ["Show a dot when an addon's icon changes"] = "Mostra un punto quando l'icona di un addon cambia",
     ["Lock position"] = "Blocca posizione",
     ["Shift-drag still moves it."] = "Maiusc + trascina lo sposta comunque.",
-    ["Untick a button to take it out of the menu. Drag a row, or use its arrows, to change the order."] = "Togli la spunta a un pulsante per toglierlo dal menu. Trascina una riga, o usa le sue frecce, per cambiare l'ordine.",
+    ["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."] = "Togli la spunta a un pulsante per toglierlo dal menu; uno fatto a mano torna sulla minimappa. Trascina una riga, o usa le sue frecce, per cambiare l'ordine.",
     ["Launcher settings"] = "Impostazioni dell'avviatore",
     ["Or right-click the launcher."] = "Oppure clic destro sull'avviatore.",
+    ["Collect hand-made minimap buttons"] = "Raccogli i pulsanti della minimappa fatti a mano",
+    ["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."] = "Pulsanti che gli addon creano senza la solita libreria. Satellite li sposta nel suo menu, dove funzionano come prima. Solo mentre i pulsanti della minimappa degli addon sono nascosti.",
 })

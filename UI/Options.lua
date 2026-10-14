@@ -35,6 +35,9 @@ function Options:Setup()
     AddSection(L["Buttons"])
     AddCheckbox("hideMinimapButtons", L["Hide the addons' own minimap buttons"],
         L["Satellite shows these buttons in its menu, so the minimap stays clear."], true, OnButtonsChanged)
+    AddCheckbox("collectHandmadeButtons", L["Collect hand-made minimap buttons"],
+        L["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."],
+        true, OnButtonsChanged)
     AddCheckbox("showWithoutMinimapButton", L["Show addons without a minimap button"],
         L["Addons that are only in the addon compartment, or only show in broker displays, appear in the menu too."],
         false, OnButtonsChanged)
