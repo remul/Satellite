@@ -27,7 +27,7 @@ open). The menu stays open while you change things, so you see them at once.
     your class colour), the colours of the small symbols (gold by default; coloured, silver,
     bronze or class colour), and the symbols themselves: the default dragon, potion and sword,
     or your class and spec (for a Frost Death Knight: a skull, a snowflake and a sword).
-  - The menu: button size and shape (minimap button, circle, square or diamond), how many
+  - The menu: button size and shape (circle, minimap button, square or diamond), how many
     buttons go down each column, and what it shows (icons, icons and names, or names only).
 - **Buttons** tab: untick buttons to take them out of the menu, drag them or use the arrows to
   change the order, or sort them by name again. Below the list: hide the addons' own minimap

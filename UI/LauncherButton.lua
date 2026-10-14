@@ -26,9 +26,9 @@ local ROW_HIGHLIGHT = CreateColor(1, 0.82, 0.3, 0.12)
 -- and how far its outline reaches out and its fill in (its border, in the border colour, between
 -- them). Diamonds have thicker edges, as their sides run slanted.
 local SHAPES = {
-    circle = { texture = "DISC", size = 0.88, icon = 0.55, outline = 1.5, inset = 2 },
-    square = { texture = "BAR_FILL", size = 0.84, icon = 0.55, outline = 1.5, inset = 2 },
-    diamond = { texture = "DIAMOND", size = 1, icon = 0.5, outline = 2, inset = 3 },
+    circle = { texture = "DISC", size = 0.88, icon = 0.55, outline = 1.5, inset = 1.5 },
+    square = { texture = "BAR_FILL", size = 0.84, icon = 0.55, outline = 1.5, inset = 1.5 },
+    diamond = { texture = "DIAMOND", size = 1, icon = 0.5, outline = 2, inset = 2.25 },
 }
 local SHAPE_HIGHLIGHT = CreateColor(1, 1, 1, 0.18)
 -- The dot on a button whose icon changed (see Alert): its size and colour.

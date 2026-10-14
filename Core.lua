@@ -63,7 +63,7 @@ local DEFAULTS = {
     menuLabels = "icons",
     -- The shape of the menu's buttons: "minimap" (Blizzard's minimap button), "circle", "square"
     -- or "diamond" (see LauncherButton).
-    buttonShape = "minimap",
+    buttonShape = "circle",
     -- Close the menu after a left-click on one of its buttons.
     closeOnClick = true,
     -- Open the menu when the mouse rests on the launcher, and close it a moment after the mouse

@@ -583,8 +583,8 @@ local function CreatePanel()
             ns.db.launcher.buttonSize = value
         end),
         buttonShape = CreateDropdown(L["Button shape"], {
-            { L["Minimap button"], "minimap" },
             { L["Circle"], "circle" },
+            { L["Minimap button"], "minimap" },
             { L["Square"], "square" },
             { L["Diamond"], "diamond" },
         }, function()

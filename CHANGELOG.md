@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- **Circle** is the menu buttons' shape at first.
+- Slightly thinner borders on the circle, square and diamond buttons.
+
 ## 0.3.0
 
 - **Button shapes**: the menu's buttons can look like minimap buttons, circles, squares or
