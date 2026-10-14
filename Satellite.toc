@@ -1,0 +1,57 @@
+## Interface: 120105
+## Title: Satellite
+## Notes: Gathers the minimap buttons of your addons into one launcher.
+## Author: Remul
+## Version: 0.1.0
+## SavedVariables: SatelliteDB
+## IconTexture: Interface\AddOns\Satellite\Media\Icon
+## AddonCompartmentFunc: Satellite_OnAddonCompartmentClick
+## Category-enUS: Minimap
+## Category-deDE: Minikarte
+## Category-esES: Minimapa
+## Category-esMX: Minimapa
+## Category-frFR: Minicarte
+## Category-itIT: Minimappa
+## Category-koKR: 미니맵
+## Category-ptBR: Minimapa
+## Category-ruRU: Миникарта
+## Category-zhCN: 小地图
+## Category-zhTW: 小地圖
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+Locales\Locales.lua
+Locales\deDE.lua
+Locales\frFR.lua
+Locales\itIT.lua
+Locales\ruRU.lua
+Locales\esES.lua
+Locales\ptBR.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Locales\koKR.lua
+Core.lua
+Buttons.lua
+Collectors\Broker.lua
+Collectors\Compartment.lua
+Collectors\Blizzard.lua
+Collectors\Scan.lua
+Debug\Test.lua
+UI\LauncherButton.lua
+Launcher\Theme.lua
+Launcher\IconStack.lua
+Launcher\StackButton.lua
+Launcher\Menu.lua
+Launcher\Compass.lua
+Launcher\Launcher.lua
+Launcher\Settings.lua
+UI\Templates.xml
+Launcher\Styles\Satellite.lua
+Launcher\Styles\Arrow.lua
+Launcher\Styles\Shapes.lua
+Launcher\Styles\SideBar.lua
+Launcher\Styles\AlwaysOpen.lua
+UI\Options.lua

@@ -1,0 +1,226 @@
+local addonName, ns = ...
+local L = ns.L
+
+ns.TITLE = "Satellite"
+-- Path to the addon's own textures, e.g. ns.MEDIA .. "Icon".
+ns.MEDIA = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
+
+-- Defaults are copied into the saved variables on first load and whenever new keys are added.
+local DEFAULTS = {
+    debug = false,
+    -- The launcher (see Launcher/Launcher.lua), in pixels: distance of its arrow from the
+    -- minimap's west compass arrow (when it's beside it, not in its place), and size of the
+    -- buttons in its menu; and the launcher's own size, in percent of its normal size.
+    launcher = {
+        gap = 4,
+        buttonSize = 28,
+        scale = 100,
+    },
+    -- The launcher's style (see Launcher/Styles): "satellite", "arrow", "circle", "square",
+    -- "sideBar" or "alwaysOpen".
+    style = "satellite",
+    -- Where the player dragged each style's launcher to, missing while it's in its
+    -- default place: [style] = { x, y } (its center from the screen's bottom left), { edge,
+    -- offset } (circle and square docked on an edge), or { degrees } (the satellite on the ring).
+    positions = {},
+    -- The side bar's edge of the screen ("LEFT", "RIGHT", "TOP" or "BOTTOM") and place along it
+    -- (from the middle).
+    sideBar = { side = "RIGHT", offset = 0 },
+    -- Put the launcher's arrow in the place of the minimap's west compass arrow (see
+    -- Launcher/Compass.lua), instead of beside it.
+    replaceCompassArrow = true,
+    -- Which way the circle's and square's menu opens while they're not docked on an edge: "AUTO"
+    -- (toward the middle of the screen), "LEFT", "RIGHT", "UP" or "DOWN".
+    openDirection = "AUTO",
+    -- The colours of the discs on the minimap button, circle and square (see IconStack):
+    -- "colored", "silver", "gold", "bronze" or "class".
+    discColors = "colored",
+    -- The border colour of the minimap button, circle and square, and their chevron (see
+    -- Theme.GetAccentColors): "gold", "silver", "bronze" or "class".
+    borderColor = "gold",
+    -- The glyphs on those discs: "adventure" (a dragon, a potion and a sword) or "class" (the
+    -- player's class's glyph on all three); or "prisma", the guild Prisma's logo instead of the
+    -- discs, for its members (see IconStack).
+    discSymbols = "adventure",
+    -- How many buttons go down each column of the menu before the next column starts; 0 lets
+    -- Satellite choose (rows for few buttons, more as they grow).
+    menuRows = 0,
+    -- Whether the launcher stays where it is; unlocked, it moves when dragged (with Shift, it
+    -- always does).
+    locked = true,
+    -- The menu's buttons in the player's order (keys), and the ones they hid: [key] = true (see
+    -- Buttons.GetCandidates).
+    buttonOrder = {},
+    hiddenButtons = {},
+    -- Put Blizzard's expansion button (the landing page) in the menu too (see Collectors/Blizzard.lua).
+    includeExpansionButton = false,
+    -- Show the addons' names beside their buttons in the menu.
+    showNames = false,
+    -- Hide the addons' own LibDBIcon minimap buttons while the launcher shows them.
+    hideMinimapButtons = true,
+    -- Also show addons without a minimap button: only in the addon compartment, or LibDataBroker
+    -- objects only for broker displays (see Buttons.IsInLauncher).
+    showWithoutMinimapButton = false,
+}
+
+local function ApplyDefaults(target, defaults)
+    for key, value in pairs(defaults) do
+        if target[key] == nil then
+            target[key] = type(value) == "table" and CopyTable(value) or value
+        elseif type(value) == "table" and type(target[key]) == "table" then
+            ApplyDefaults(target[key], value)
+        end
+    end
+end
+
+function ns:Print(...)
+    print("|cff33ff99" .. ns.TITLE .. "|r:", ...)
+end
+
+function ns:Debug(...)
+    if self.db and self.db.debug then
+        self:Print("|cff888888[debug]|r", ...)
+    end
+end
+
+-- Event dispatch: ns:RegisterEvent("EVENT_NAME", callback) calls callback(...) when it fires.
+-- Without a callback, ns:EVENT_NAME(...) is called. An event can have several callbacks.
+local frame = CreateFrame("Frame")
+-- [event] = { { key = callback or METHOD, run = function(...) } }. Lists are replaced, not changed
+-- in place, so a callback can unregister itself while the event is being dispatched.
+local callbacks = {}
+local METHOD = {} -- key for the ns:EVENT_NAME handler
+
+frame:SetScript("OnEvent", function(_, event, ...)
+    local list = callbacks[event]
+    if list then
+        for _, entry in ipairs(list) do
+            entry.run(...)
+        end
+    end
+end)
+
+local function AddCallback(event, callback)
+    local list = CopyTable(callbacks[event] or {}, true)
+    tinsert(list, {
+        key = callback or METHOD,
+        run = callback or function(...)
+            -- Calls the ns:EVENT_NAME handler; the IDE can't tell which method that is.
+            ---@diagnostic disable-next-line: param-type-mismatch
+            ns[event](ns, ...)
+        end,
+    })
+    callbacks[event] = list
+end
+
+function ns:RegisterEvent(event, callback)
+    AddCallback(event, callback)
+    frame:RegisterEvent(event)
+end
+
+-- Removes the callback given to RegisterEvent (without one: the ns:EVENT_NAME handler). Other
+-- callbacks for the event keep running.
+function ns:UnregisterEvent(event, callback)
+    local key = callback or METHOD
+    local list = {}
+    for _, entry in ipairs(callbacks[event] or {}) do
+        if entry.key ~= key then
+            list[#list + 1] = entry
+        end
+    end
+    if #list > 0 then
+        callbacks[event] = list
+    else
+        callbacks[event] = nil
+        frame:UnregisterEvent(event)
+    end
+end
+
+-- Prints the buttons Satellite found, to check what it collects.
+function ns.PrintButtons()
+    local list = ns.Buttons.GetAll()
+    if #list == 0 then
+        ns:Print(L["No buttons found yet."])
+        return
+    end
+    ns:Print(format(L["Buttons found: %d"], #list))
+    local Broker = ns.Broker
+    for _, button in ipairs(list) do
+        local kind
+        if button.source == "comp" then
+            kind = L["Addon compartment"]
+        elseif button.source == "frame" then
+            kind = L["Minimap button"] .. " (" .. button.name .. ")"
+        elseif button.source == "blizzard" then
+            kind = L["Blizzard"]
+        elseif button.type == Broker.LAUNCHER then
+            kind = L["Launcher"]
+        elseif button.type == Broker.DATA_SOURCE then
+            kind = L["Data source"]
+        else
+            kind = L["Other"]
+        end
+        local line = "  " .. button.label .. " - " .. kind
+        if button.source == "ldb" and Broker.HasMinimapButton(button) then
+            line = line .. ", " .. L["has a minimap button"]
+        end
+        print(line)
+    end
+end
+
+-- Lifecycle
+function ns:ADDON_LOADED(loadedName)
+    if loadedName ~= addonName then
+        return
+    end
+    self:UnregisterEvent("ADDON_LOADED")
+
+    SatelliteDB = SatelliteDB or {}
+    ApplyDefaults(SatelliteDB, DEFAULTS)
+    self.db = SatelliteDB
+    ns.Options:Setup()
+    ns.Broker:Setup()
+    ns.Compartment:Setup()
+    ns.Blizzard:Setup()
+    ns.Scan:Setup()
+    ns.Launcher:Setup()
+end
+
+ns:RegisterEvent("ADDON_LOADED")
+
+-- Global so the TOC's AddonCompartmentFunc can find it.
+_G.Satellite_OnAddonCompartmentClick = function()
+    ns.Options:Open()
+end
+
+-- Slash commands
+SLASH_SATELLITE1 = "/satellite"
+
+SlashCmdList.SATELLITE = function(msg)
+    local cmd, rest = strtrim(msg or ""):lower():match("^(%S*)%s*(.-)$")
+
+    if cmd == "" then
+        ns.Options:Open()
+    elseif cmd == "list" then
+        ns.PrintButtons()
+    elseif cmd == "reset" then
+        ns.Launcher.ResetPositions()
+    elseif cmd == "scan" then
+        ns.Scan.PrintRun()
+    elseif cmd == "test" then
+        ns.Test.Command(rest)
+    elseif cmd == "debug" then
+        ns.db.debug = not ns.db.debug
+        ns:Print(L["Debug"], ns.db.debug and L["enabled"] or L["disabled"])
+    else
+        ns:Print(L["Commands:"])
+        print(L["  /satellite - open the settings"])
+        print(L["  /satellite list - list the buttons Satellite found"])
+        print(L["  /satellite reset - put the launcher back in its place"])
+        print(L["  /satellite debug - toggle debug output"])
+        if ns.db.debug then
+            print(L["  /satellite scan - scan the minimap now"])
+            print(L["  /satellite test - test buttons and map pins"])
+        end
+    end
+end

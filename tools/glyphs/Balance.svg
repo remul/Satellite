@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Monk: yin and yang. -->
+  <circle cx="32" cy="32" r="26" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32,6 A26,26 0 0 1 32,58 A13,13 0 0 1 32,32 A13,13 0 0 0 32,6 Z" fill="#000000"/>
+  <circle cx="32" cy="19" r="4.5" fill="#000000"/>
+  <circle cx="32" cy="45" r="4.5" fill="#ffffff"/>
+</svg>
