@@ -13,6 +13,7 @@ Theme.PANEL_BORDER = ns.MEDIA .. "PanelBorder"
 Theme.BAR_FILL = ns.MEDIA .. "BarFill"
 Theme.BAR_BORDER = ns.MEDIA .. "BarBorder"
 Theme.DISC = ns.MEDIA .. "Disc"
+Theme.DIAMOND = ns.MEDIA .. "Diamond"
 Theme.TRIANGLE = ns.MEDIA .. "Triangle"
 -- Corner radius of the panel and bar textures, their slice margins.
 Theme.PANEL_RADIUS = 16
@@ -112,6 +113,23 @@ function Theme.AddRoundBox(frame)
     local border = Theme.AddTexture(frame, Theme.DISC, "BACKGROUND", 1, Theme.GOLD)
     local fill = Theme.AddTexture(frame, Theme.DISC, "BACKGROUND", 2, Theme.FILL, -Theme.ROUND_BORDER)
     return fill, border
+end
+
+-- A short pop on frame (it grows a little and settles), to show something new: an animation group
+-- to Play.
+function Theme.CreatePop(frame)
+    local group = frame:CreateAnimationGroup()
+    local grow = group:CreateAnimation("Scale")
+    grow:SetScaleTo(1.25, 1.25)
+    grow:SetDuration(0.12)
+    grow:SetSmoothing("OUT")
+    grow:SetOrder(1)
+    local settle = group:CreateAnimation("Scale")
+    settle:SetScaleTo(0.8, 0.8)
+    settle:SetDuration(0.2)
+    settle:SetSmoothing("IN_OUT")
+    settle:SetOrder(2)
+    return group
 end
 
 -- Colours a box (the menu, the circle and square) for hovered or not: its border in the border

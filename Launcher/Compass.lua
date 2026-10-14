@@ -1,11 +1,12 @@
 local _, ns = ...
 
--- Takes the west arrow off the minimap's compass, so the launcher's arrow can sit in its place.
--- Blizzard draws the ring and all four compass arrows as one texture (MinimapCompassTexture), so
--- it can't be hidden on its own: the texture is redrawn from pieces of itself, leaving out the
--- square with the west arrow, and that square is filled with plain ring from right beside it: its
--- upper half from just above, its lower half from just below, each turned a little to fit. The
--- ring's shading changes slowly around it, so copies from close by match their neighbours.
+-- Takes the west arrow (or the east one, see SetSide) off the minimap's compass, so the launcher's
+-- arrow can sit in its place. Blizzard draws the ring and all four compass arrows as one texture
+-- (MinimapCompassTexture), so it can't be hidden on its own: the texture is redrawn from pieces of
+-- itself, leaving out the square with the arrow, and that square is filled with plain ring from
+-- right beside it: its upper half from just above, its lower half from just below, each turned a
+-- little to fit. The ring's shading changes slowly around it, so copies from close by match their
+-- neighbours.
 --
 -- Only on a round minimap that doesn't rotate: a rotating compass turns with the map, and a square
 -- minimap has no whole ring. Otherwise the original stays.
@@ -14,10 +15,10 @@ ns.Compass = Compass
 
 -- Measures as shares of the minimap's half width: the radius the ring is copied around (the
 -- ring is about there; it only has to lie inside the square), and the square's size, which has to
--- hold the west arrow (it reaches 1.08 out and 0.11 up and down).
+-- hold the west or east arrow (it reaches 1.08 out and 0.11 up and down).
 local RING_SHARE = 1.0
 local SQUARE_SHARE = 0.3
--- How far round the halves are copied from, in degrees: just clear of the west arrow (it spans
+-- How far round the halves are copied from, in degrees: just clear of the arrow (it spans
 -- about 6.3 degrees each way), so the copies come from as close by as possible.
 local COPY_DEGREES = 9
 -- The north arrow's art, as shares of the minimap's half width (measured in game): from a little
@@ -35,6 +36,8 @@ local holder -- frame for the pieces, over the compass
 local originalColor, originalAlpha
 local pieces = {}
 local isReplaced = false
+-- Which arrow is taken off: -1 the west one, 1 the east one.
+local side = -1
 
 -- The compass texture's file and its corner coordinates within it (it's an atlas).
 local function GetSource(compass)
@@ -111,16 +114,27 @@ local function Build(compass)
         piece:Show()
     end
 
-    -- The square with the west arrow.
-    local squareLeft, squareRight = centerX - radius - size / 2, centerX - radius + size / 2
+    -- The square with the arrow: the east one mirrored from the west one around the ring's middle
+    -- (the compass texture's), which can be a little off the minimap's (see GetRingOffset).
+    local squareX = side < 0 and centerX - radius or width - centerX + radius
+    local squareLeft, squareRight = squareX - size / 2, squareX + size / 2
     local squareTop, squareBottom = centerY - size / 2, centerY + size / 2
 
-    -- Everything else: right of the square, and above and below it.
-    local regions = {
-        { squareRight, 0, width, height },
-        { 0, 0, squareRight, squareTop },
-        { 0, squareBottom, squareRight, height },
-    }
+    -- Everything else: on the minimap's other side of the square, and above and below it.
+    local regions
+    if side < 0 then
+        regions = {
+            { squareRight, 0, width, height },
+            { 0, 0, squareRight, squareTop },
+            { 0, squareBottom, squareRight, height },
+        }
+    else
+        regions = {
+            { 0, 0, squareLeft, height },
+            { squareLeft, 0, width, squareTop },
+            { squareLeft, squareBottom, width, height },
+        }
+    end
     for index, region in ipairs(regions) do
         local piece = GetPiece(index)
         local x0, y0, x1, y1 = unpack(region)
@@ -129,15 +143,14 @@ local function Build(compass)
     end
 
     -- The square, in two halves: each corner of a half, turned around the minimap's center by
-    -- COPY_DEGREES (the upper half clockwise, up the ring; the lower one the other way), lands on
-    -- the spot to copy.
+    -- COPY_DEGREES (the upper half up the ring, the lower one down it), lands on the spot to copy.
     local h = size / 2
     local function FillHalf(piece, upper)
-        local turn = math.rad(upper and -COPY_DEGREES or COPY_DEGREES)
+        local turn = math.rad((upper and 1 or -1) * side * COPY_DEGREES)
         local cos, sin = math.cos(turn), math.sin(turn)
         local function Source(dx, dy)
             -- (dx, dy): the corner from the square's center, y going up.
-            local x, y = -radius + dx, dy
+            local x, y = squareX - centerX + dx, dy
             return U(centerX + x * cos - y * sin), V(centerY - (x * sin + y * cos))
         end
         local topY, bottomY = upper and h or 0, upper and 0 or -h
@@ -162,10 +175,10 @@ local function CanReplace()
 end
 
 -- The compass's own north arrow, turned to point west, to draw as the launcher's arrow: its file,
--- the texture coordinates of the part outside the ring (the eight-value form, turning it), and
--- where it would be pointing west in the minimap's units around its center: { file, outerCoords,
--- x0, x1, y0, y1, pivot, color } (pivot: the ring's outer edge, see RING_PIVOT_SHARE). Nil
--- without a compass.
+-- the texture coordinates of the part outside the ring (the eight-value form, turning it; also
+-- turned to point east), and where it would be pointing west in the minimap's units around its
+-- center: { file, outerCoords, eastCoords, x0, x1, y0, y1, pivot, color } (pivot: the ring's outer
+-- edge, see RING_PIVOT_SHARE). Nil without a compass.
 function Compass.GetNorthArrowArt()
     local compass = MinimapCompassTexture
     local m = compass and Measure(compass)
@@ -184,12 +197,25 @@ function Compass.GetNorthArrowArt()
     local pivot = -half / m.scale * RING_PIVOT_SHARE
     return {
         file = m.file,
-        -- Turned a quarter counterclockwise: the tip (the top) to the left.
+        -- Turned a quarter counterclockwise: the tip (the top) to the left; or clockwise, to the
+        -- right.
         outerCoords = { uRight, vTop, uLeft, vTop, uRight, vPivot, uLeft, vPivot },
+        eastCoords = { uLeft, vPivot, uRight, vPivot, uLeft, vTop, uRight, vTop },
         x0 = -inner - depth, x1 = -inner, y0 = -width / 2, y1 = width / 2, pivot = pivot,
         -- While the compass is hidden, the colour it had.
         color = isReplaced and originalColor or { compass:GetVertexColor() },
     }
+end
+
+-- How far right of the minimap's middle the compass ring's middle is, in the minimap's units (0
+-- without a compass): mirrored to the east, things are mirrored around the ring's middle.
+function Compass.GetRingOffset()
+    local compass = MinimapCompassTexture
+    local m = compass and Measure(compass)
+    if not m then
+        return 0
+    end
+    return (compass:GetWidth() / 2 - m.centerX) / m.scale
 end
 
 -- The frame level of the compass's pieces (or 0), for the launcher's arrow to go over them.
@@ -197,12 +223,29 @@ function Compass.GetFrameLevel()
     return holder and holder:GetFrameLevel() or 0
 end
 
--- Whether the west arrow is taken off now (the launcher's arrow then sits in its place).
+-- Whether the arrow is taken off now (the launcher's arrow then sits in its place).
 function Compass.IsReplaced()
     return isReplaced
 end
 
--- Takes the west arrow off or puts it back, as the settings say. Called again when the minimap's
+-- Takes the west arrow (-1) or the east one (1) off from now on: the compass arrow style's arrow
+-- moves to the east when there's no room for its menu on the left.
+function Compass.SetSide(newSide)
+    if newSide == side then
+        return
+    end
+    side = newSide
+    if isReplaced then
+        local compass = MinimapCompassTexture
+        isReplaced = Build(compass)
+        holder:SetShown(isReplaced and compass:IsShown())
+        if not isReplaced then
+            compass:SetAlpha(originalAlpha)
+        end
+    end
+end
+
+-- Takes the arrow off or puts it back, as the settings say. Called again when the minimap's
 -- size changes.
 function Compass.Update()
     local compass = MinimapCompassTexture

@@ -79,6 +79,8 @@ ns.RegisterLocale("itIT", {
     ["Icons"] = "Icone",
     ["Icons and names"] = "Icone e nomi",
     ["Names only"] = "Solo nomi",
+    ["Button shape"] = "Forma dei pulsanti",
+    ["Diamond"] = "Rombo",
     ["Close after clicking a button"] = "Chiudi dopo il clic su un pulsante",
     ["Behavior"] = "Comportamento",
     ["Opening and closing"] = "Apertura e chiusura",

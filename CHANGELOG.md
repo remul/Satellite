@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+
+- **Button shapes**: the menu's buttons can look like minimap buttons, circles, squares or
+  diamonds, with a border in the border colour.
+- **The discs orbit** a little while you hover the launcher.
+- **A short pulse** on the launcher when an addon adds a button while you play.
+- **The compass arrow on the east side**: with the minimap at the screen's left edge, the arrow
+  and its menu move to the minimap's other side, in place of the east arrow or beside it.
+- **The compass arrow's menu** slides and fades in like the others, without an invisible edge.
+- **The settings don't jump** when you switch tabs: the panel keeps one height.
+- Fixed: an addon whose compartment entry and broker button have different names showed twice.
+- The order and hidden buttons of addons that are gone for 30 days are forgotten.
+
 ## 0.2.0
 
 - **Symbols for your class and spec**: each class has its own symbol, and each spec two more, on

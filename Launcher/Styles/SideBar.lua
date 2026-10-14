@@ -87,6 +87,7 @@ local function Create()
     end
     tab.shadow = AddTriangle(0, Theme.OUTLINE)
     tab.triangle = AddTriangle(1, TRIANGLE_TOP)
+    tab.pop = Theme.CreatePop(tab)
     ns.Launcher.SetupOpener(bar)
     ns.Launcher.SetupOpener(tab)
 end
@@ -169,6 +170,11 @@ function Style:OnProgress(progress)
         pointedAt = pointing
         PointTriangle(pointing)
     end
+end
+
+-- A short pop of the tab, to show a new button (see Launcher.Pulse).
+function Style:Pulse()
+    tab.pop:Play()
 end
 
 -- The alert dot (see Alert): on the tab's corner toward the middle of the screen and up (or

@@ -207,6 +207,63 @@ function Buttons.Move(key, step)
     Buttons.SetOrder(keys)
 end
 
+-- Saved keys of removed addons ------------------------------------------------------------------
+-- The order and hidden buttons are kept by key, also while an addon is turned off or not loaded
+-- yet (it may come back). Keys whose button hasn't been there for PRUNE_DAYS are taken out.
+
+-- Checked this long after login, once addons have made their buttons.
+local PRUNE_DELAY = 20
+local PRUNE_DAYS = 30
+
+function Buttons.Prune()
+    local now = time()
+    local seen = ns.db.buttonsSeen
+    for key in pairs(buttons) do
+        seen[key] = now
+    end
+    local isSaved = {}
+    for _, key in ipairs(ns.db.buttonOrder) do
+        isSaved[key] = true
+    end
+    for key in pairs(ns.db.hiddenButtons) do
+        isSaved[key] = true
+    end
+    local isGone = {}
+    for key in pairs(isSaved) do
+        -- Saved before Satellite kept track: counted from now.
+        seen[key] = seen[key] or now
+        if now - seen[key] > PRUNE_DAYS * 24 * 60 * 60 then
+            isGone[key] = true
+        end
+    end
+    for key in pairs(seen) do
+        if isGone[key] or not isSaved[key] then
+            seen[key] = nil
+        end
+    end
+    if not next(isGone) then
+        return
+    end
+    local order = {}
+    for _, key in ipairs(ns.db.buttonOrder) do
+        if not isGone[key] then
+            order[#order + 1] = key
+        end
+    end
+    ns.db.buttonOrder = order
+    for key in pairs(isGone) do
+        ns.db.hiddenButtons[key] = nil
+        ns:Debug("Pruned", key)
+    end
+end
+
+-- Called once ns.db is loaded.
+function Buttons:Setup()
+    ns:RegisterEvent("PLAYER_LOGIN", function()
+        C_Timer.After(PRUNE_DELAY, Buttons.Prune)
+    end)
+end
+
 -- Back to sorting by name.
 function Buttons.ResetOrder()
     wipe(ns.db.buttonOrder)

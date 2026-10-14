@@ -79,6 +79,8 @@ ns.RegisterLocale("zhCN", {
     ["Icons"] = "图标",
     ["Icons and names"] = "图标和名称",
     ["Names only"] = "仅名称",
+    ["Button shape"] = "按钮形状",
+    ["Diamond"] = "菱形",
     ["Close after clicking a button"] = "点击按钮后关闭",
     ["Behavior"] = "行为",
     ["Opening and closing"] = "打开和关闭",

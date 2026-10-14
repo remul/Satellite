@@ -155,6 +155,11 @@ local function CreateStyle(key)
         opener:SetProgress(progress)
     end
 
+    -- A short bounce of the discs, to show a new button (see Launcher.Pulse).
+    function Style:Pulse()
+        opener:Pulse()
+    end
+
     -- The edge it's docked on, or nil.
     local dockedEdge
 

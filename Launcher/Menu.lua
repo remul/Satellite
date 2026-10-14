@@ -2,8 +2,7 @@ local _, ns = ...
 
 -- The menu every launcher style opens: a rounded panel with the buttons in rows, sliding out to
 -- the left, right, up or down from where the style puts it: a short way from the launcher's side
--- as it fades in, or (for the compass arrow, which rides along in front of it) uncovered from that
--- spot by a clipping frame that grows from there.
+-- as it fades in.
 local Menu = {}
 ns.Menu = Menu
 
@@ -29,12 +28,12 @@ local NAME_ROW_HEIGHT, NAME_ROW_SPACING = 20, 2
 local MAX_NAME_ROWS = 12
 
 local OPEN_TIME, CLOSE_TIME = 0.28, 0.2
--- How far it slides while it fades in (when not uncovered).
+-- How far it slides while it fades in.
 local SLIDE_DISTANCE = 14
 -- Seconds between one column of buttons appearing and the next.
 local STAGGER = 0.03
 
-local clip, panel
+local holder, panel
 -- The shown buttons' frames, in order (see LauncherButton).
 local shownFrames = {}
 
@@ -46,10 +45,8 @@ local isAlwaysOpen = false
 -- 0 = closed, 1 = open; animated in between.
 local progress = 0
 local animation -- { from, to, elapsed, duration } of the last animation (the table is reused)
--- "LEFT", "RIGHT", "UP" or "DOWN": the way it slides out; and whether it's uncovered by the
--- clipping frame (see Place) instead of fading in.
+-- "LEFT", "RIGHT", "UP" or "DOWN": the way it slides out.
 local direction = "LEFT"
-local isUncovered = false
 local onProgress -- function(progress), to move the launcher along
 local frameLevel = 1
 -- isByColumn: the buttons go down each column before the next (with names, or a set number per
@@ -117,7 +114,7 @@ end
 
 -- Drawing --------------------------------------------------------------------------------------
 
--- For each direction: the clipping frame's point at the launcher, and the far end the panel is
+-- For each direction: the holder's point at the launcher, and the far end the panel is
 -- fixed to.
 local ANCHORS = {
     LEFT = { "RIGHT", "LEFT" },
@@ -131,20 +128,15 @@ local STEPS = { LEFT = { -1, 0 }, RIGHT = { 1, 0 }, UP = { 0, 1 }, DOWN = { 0, -
 
 -- Shows the menu as it is at the current progress.
 local function Draw()
-    local share = isUncovered and progress or 1
-    if IsVertical() then
-        clip:SetSize(layout.width, math.max(0.1, layout.height * share))
-    else
-        clip:SetSize(math.max(0.1, layout.width * share), layout.height)
-    end
+    holder:SetSize(layout.width, layout.height)
     -- Fading in, it starts the slide distance back toward the launcher.
     local far = ANCHORS[direction][2]
-    local back = isUncovered and 0 or SLIDE_DISTANCE * (1 - progress)
+    local back = SLIDE_DISTANCE * (1 - progress)
     local stepX, stepY = unpack(STEPS[direction])
     panel:ClearAllPoints()
-    panel:SetPoint(far, clip, far, -stepX * back, -stepY * back)
-    panel:SetAlpha(isUncovered and 1 or progress)
-    clip:SetShown(progress > 0)
+    panel:SetPoint(far, holder, far, -stepX * back, -stepY * back)
+    panel:SetAlpha(progress)
+    holder:SetShown(progress > 0)
     if onProgress then
         onProgress(progress)
     end
@@ -156,15 +148,15 @@ local function OnUpdate(_, elapsed)
     progress = animation.from + (animation.to - animation.from) * EaseOut(x)
     Draw()
     if x >= 1 then
-        clip:SetScript("OnUpdate", nil)
+        holder:SetScript("OnUpdate", nil)
     end
 end
 
 local function Animate(to, duration)
     animation = animation or {}
     animation.from, animation.to, animation.elapsed, animation.duration = progress, to, 0, duration
-    clip:Show()
-    clip:SetScript("OnUpdate", OnUpdate)
+    holder:Show()
+    holder:SetScript("OnUpdate", OnUpdate)
 end
 
 -- Buttons --------------------------------------------------------------------------------------
@@ -211,10 +203,10 @@ end
 -- Space kept between the menu and the screen's edges.
 local SCREEN_MARGIN = 4
 
--- How far to move the menu so it stays on the screen: x, y in the clipping frame's units, for an
--- anchor at relativeTo's relativePoint moved by x, y. Across the way it opens (it's centred on its
--- launcher that way), e.g. beside a launcher near the screen's top; and, unless it's uncovered
--- (its launcher rides along), the way it opens too, e.g. near the screen's left edge.
+-- How far to move the menu so it stays on the screen: x, y in the holder's units, for an anchor at
+-- relativeTo's relativePoint moved by x, y. Across the way it opens (it's centred on its launcher
+-- that way), e.g. beside a launcher near the screen's top; and the way it opens too, e.g. near the
+-- screen's left edge.
 local POINT_SHARES = { LEFT = 0, RIGHT = 1, BOTTOM = 0, TOP = 1 }
 local function GetScreenShift(relativeTo, relativePoint, x, y)
     local left, bottom, width, height = relativeTo:GetRect()
@@ -223,13 +215,13 @@ local function GetScreenShift(relativeTo, relativePoint, x, y)
     end
     local uiScale = UIParent:GetEffectiveScale()
     local toScreen = relativeTo:GetEffectiveScale() / uiScale
-    local clipToScreen = clip:GetEffectiveScale() / uiScale
+    local holderToScreen = holder:GetEffectiveScale() / uiScale
     -- The anchor on the screen, and the menu's size there.
     local shareX = POINT_SHARES[relativePoint:match("LEFT") or relativePoint:match("RIGHT") or ""] or 0.5
     local shareY = POINT_SHARES[relativePoint:match("BOTTOM") or relativePoint:match("TOP") or ""] or 0.5
-    local anchorX = (left + width * shareX) * toScreen + x * clipToScreen
-    local anchorY = (bottom + height * shareY) * toScreen + y * clipToScreen
-    local menuWidth, menuHeight = layout.width * clipToScreen, layout.height * clipToScreen
+    local anchorX = (left + width * shareX) * toScreen + x * holderToScreen
+    local anchorY = (bottom + height * shareY) * toScreen + y * holderToScreen
+    local menuWidth, menuHeight = layout.width * holderToScreen, layout.height * holderToScreen
     -- The menu's low and high ends on each axis.
     local lowX, lowY = anchorX - menuWidth / 2, anchorY - menuHeight / 2
     if direction == "LEFT" then
@@ -251,49 +243,38 @@ local function GetScreenShift(relativeTo, relativePoint, x, y)
     end
     local shiftX = Shift(lowX, menuWidth, UIParent:GetWidth())
     local shiftY = Shift(lowY, menuHeight, UIParent:GetHeight())
-    if isUncovered then
-        if IsVertical() then
-            shiftY = 0
-        else
-            shiftX = 0
-        end
-    end
-    return shiftX / clipToScreen, shiftY / clipToScreen
+    return shiftX / holderToScreen, shiftY / holderToScreen
 end
 
 -- Puts the menu's launcher-side end at (relativeTo, relativePoint, x, y), sliding out toward
 -- newDirection ("LEFT", "RIGHT", "UP" or "DOWN"), moved as far as it takes to stay on the screen
--- (see GetScreenShift); it moves and hides with parent. The panel is fixed to the clipping frame's far
--- end (see Draw). uncover: uncovered by the clipping frame growing from that end, instead of
--- fading in.
-function Menu.Place(parent, relativeTo, relativePoint, x, y, newDirection, uncover)
+-- (see GetScreenShift); it moves and hides with parent. The holder is where the menu is once open;
+-- the panel slides into it (see Draw).
+function Menu.Place(parent, relativeTo, relativePoint, x, y, newDirection)
     direction = newDirection
-    isUncovered = uncover or false
-    clip:SetClipsChildren(isUncovered)
-    clip:SetParent(parent)
+    holder:SetParent(parent)
     -- A new parent can change the frame level; keep the style's.
     Menu.SetFrameLevel(frameLevel)
-    clip:ClearAllPoints()
+    holder:ClearAllPoints()
     local near = ANCHORS[direction][1]
     local shiftX, shiftY = GetScreenShift(relativeTo, relativePoint, x, y)
-    clip:SetPoint(near, relativeTo, relativePoint, x + shiftX, y + shiftY)
+    holder:SetPoint(near, relativeTo, relativePoint, x + shiftX, y + shiftY)
     Draw()
 end
 
--- How far the menu still moves until it's open (x, y in UIParent's units): the rest of the slide,
--- or of the clipping frame's growth while it's uncovered. 0, 0 once it's open.
+-- How far the menu still moves until it's open (x, y in UIParent's units): the rest of the slide.
+-- 0, 0 once it's open.
 function Menu.GetDistanceToOpen()
     local stepX, stepY = unpack(STEPS[direction])
-    local length = IsVertical() and layout.height or layout.width
-    local rest = (isUncovered and length or SLIDE_DISTANCE) * (1 - progress)
-    rest = rest * clip:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    local rest = SLIDE_DISTANCE * (1 - progress)
+    rest = rest * holder:GetEffectiveScale() / UIParent:GetEffectiveScale()
     return stepX * rest, stepY * rest
 end
 
 -- The menu's frame level; its buttons go 3 above.
 function Menu.SetFrameLevel(level)
     frameLevel = level
-    clip:SetFrameLevel(level)
+    holder:SetFrameLevel(level)
     panel:SetFrameLevel(level + 1)
 end
 
@@ -337,7 +318,7 @@ function Menu.Reset(alwaysOpen, callback)
     isOpen = alwaysOpen
     progress = alwaysOpen and 1 or 0
     animation = nil
-    clip:SetScript("OnUpdate", nil)
+    holder:SetScript("OnUpdate", nil)
     onProgress = callback
 end
 
@@ -367,10 +348,9 @@ end
 -- The panel takes the mouse, so clicks on its background don't reach the game world behind it.
 -- A right-click there opens the settings, as on the launcher (the Always open style has none).
 function Menu.Setup()
-    clip = CreateFrame("Frame", nil, UIParent)
-    clip:SetClipsChildren(true)
-    clip:Hide()
-    panel = CreateFrame("Frame", nil, clip)
+    holder = CreateFrame("Frame", nil, UIParent)
+    holder:Hide()
+    panel = CreateFrame("Frame", nil, holder)
     panel:EnableMouse(true)
     panel.fill, panel.border = Theme.AddBox(panel, Theme.PANEL_FILL, Theme.PANEL_BORDER, Theme.PANEL_RADIUS)
     panel:SetScript("OnMouseUp", function(self, mouseButton)

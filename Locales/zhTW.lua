@@ -79,6 +79,8 @@ ns.RegisterLocale("zhTW", {
     ["Icons"] = "圖示",
     ["Icons and names"] = "圖示和名稱",
     ["Names only"] = "僅名稱",
+    ["Button shape"] = "按鈕形狀",
+    ["Diamond"] = "菱形",
     ["Close after clicking a button"] = "點擊按鈕後關閉",
     ["Behavior"] = "行為",
     ["Opening and closing"] = "開啟和關閉",

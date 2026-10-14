@@ -98,6 +98,11 @@ function Style:Refresh()
     ns.Menu.Place(frame, button, "CENTER", direction == "LEFT" and -reach or reach, 0, direction)
 end
 
+-- A short bounce of the discs, to show a new button (see Launcher.Pulse).
+function Style:Pulse()
+    opener:Pulse()
+end
+
 -- The alert dot (see Alert): on the ring at the top right.
 function Style:GetAlertPoint()
     local offset = GetSize() * 0.33

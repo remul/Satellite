@@ -20,6 +20,17 @@ local ICON_CROP = 0.05
 -- Showing names only: the space before the name, and the row's colour while hovered.
 local NAME_INSET = 6
 local ROW_HIGHLIGHT = CreateColor(1, 0.82, 0.3, 0.12)
+-- The menu's own button shapes (ns.db.buttonShape; "minimap" is Blizzard's minimap button art):
+-- each one's texture (also its icon's mask), its size and its icon's as shares of the button's
+-- (a circle or square fills more of it than a diamond, so they're drawn smaller to look alike),
+-- and how far its outline reaches out and its fill in (its border, in the border colour, between
+-- them). Diamonds have thicker edges, as their sides run slanted.
+local SHAPES = {
+    circle = { texture = "DISC", size = 0.88, icon = 0.55, outline = 1.5, inset = 2 },
+    square = { texture = "BAR_FILL", size = 0.84, icon = 0.55, outline = 1.5, inset = 2 },
+    diamond = { texture = "DIAMOND", size = 1, icon = 0.5, outline = 2, inset = 3 },
+}
+local SHAPE_HIGHLIGHT = CreateColor(1, 1, 1, 0.18)
 -- The dot on a button whose icon changed (see Alert): its size and colour.
 local ALERT_SIZE = 7
 local ALERT_COLOR = CreateColor(0.95, 0.27, 0.2, 1)
@@ -204,6 +215,16 @@ local function CreateFrameFor(parent)
     self.background:SetPoint("CENTER")
     self.icon = self:CreateTexture(nil, "ARTWORK")
     self.icon:SetPoint("CENTER")
+    -- The shapes (see SetLook): outline, border and fill under the icon, the icon cut to the
+    -- shape, and the shape lit up while hovered.
+    self.shapeOutline = self:CreateTexture(nil, "BACKGROUND", nil, 0)
+    self.shapeBorder = self:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.shapeFill = self:CreateTexture(nil, "BACKGROUND", nil, 2)
+    self.shapeHighlight = self:CreateTexture(nil, "HIGHLIGHT")
+    self.shapeHighlight:SetBlendMode("ADD")
+    self.shapeTextures = { self.shapeOutline, self.shapeBorder, self.shapeFill, self.shapeHighlight }
+    self.iconMask = self:CreateMaskTexture()
+    self.iconMask:SetAllPoints(self.icon)
     self.border = self:CreateTexture(nil, "OVERLAY")
     self.border:SetTexture(BORDER_TEXTURE)
     self.border:SetPoint("TOPLEFT")
@@ -270,13 +291,62 @@ local FRAMED_ART_SCALE = 1.3
 -- size wide; with "both", the addon's name beside it, width wide (cut off with "..." if it doesn't
 -- fit; clicks on it count as clicks on the button); with "names", just the name, as a row width
 -- wide and size high.
+-- Places texture over the button, grown by grow on each side (shrunk if negative).
+local function Fit(texture, grow)
+    texture:ClearAllPoints()
+    texture:SetPoint("TOPLEFT", -grow, grow)
+    texture:SetPoint("BOTTOMRIGHT", grow, -grow)
+end
+
+-- Draws the button in one of the menu's own shapes (see SHAPES), or not (nil: Blizzard's art).
+local function SetShape(self, shape, size)
+    local info = SHAPES[shape]
+    for _, texture in ipairs(self.shapeTextures) do
+        texture:SetShown(info ~= nil)
+    end
+    if not info then
+        if self.isMasked then
+            self.icon:RemoveMaskTexture(self.iconMask)
+            self.isMasked = false
+        end
+        return
+    end
+    local Theme = ns.Theme
+    local file = Theme[info.texture]
+    local color = Theme.GetAccentColors()
+    -- How far in from the button's edge the shape is drawn.
+    local margin = size * (1 - info.size) / 2
+    self.shapeOutline:SetTexture(file)
+    self.shapeOutline:SetVertexColor(Theme.OUTLINE:GetRGBA())
+    Fit(self.shapeOutline, info.outline - margin)
+    self.shapeBorder:SetTexture(file)
+    self.shapeBorder:SetVertexColor(color:GetRGBA())
+    Fit(self.shapeBorder, -margin)
+    self.shapeFill:SetTexture(file)
+    self.shapeFill:SetVertexColor(Theme.FILL:GetRGBA())
+    Fit(self.shapeFill, -info.inset - margin)
+    self.shapeHighlight:SetTexture(file)
+    self.shapeHighlight:SetVertexColor(SHAPE_HIGHLIGHT:GetRGBA())
+    Fit(self.shapeHighlight, -info.inset - margin)
+    self.iconMask:SetTexture(file, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    if not self.isMasked then
+        self.icon:AddMaskTexture(self.iconMask)
+        self.isMasked = true
+    end
+    self.icon:SetSize(size * info.icon, size * info.icon)
+end
+
 function LauncherButton.SetLook(self, mode, size, width)
     local isNameOnly = mode == "names"
     local hasOwnFrame = self.button.source == "blizzard"
-    self.border:SetShown(not hasOwnFrame and not isNameOnly)
-    self.background:SetShown(not hasOwnFrame and not isNameOnly)
+    -- Blizzard's expansion button has its own frame in its art, so it keeps it in every shape.
+    local shape = not isNameOnly and not hasOwnFrame and ns.db.buttonShape
+    local isShaped = SHAPES[shape] ~= nil
+    SetShape(self, isShaped and shape or nil, size)
+    self.border:SetShown(not hasOwnFrame and not isNameOnly and not isShaped)
+    self.background:SetShown(not hasOwnFrame and not isNameOnly and not isShaped)
     self.icon:SetShown(not isNameOnly)
-    self:GetHighlightTexture():SetAlpha(isNameOnly and 0 or 1)
+    self:GetHighlightTexture():SetAlpha((isNameOnly or isShaped) and 0 or 1)
     self.rowHighlight:SetShown(isNameOnly)
     self.label:SetShown(mode ~= "icons")
     self.label:SetText(self.button.label)
@@ -289,10 +359,12 @@ function LauncherButton.SetLook(self, mode, size, width)
         return
     end
     self:SetSize(size, size)
-    self.border:SetSize(size * BORDER_SCALE, size * BORDER_SCALE)
-    self.background:SetSize(size * BACKGROUND_SCALE, size * BACKGROUND_SCALE)
-    local iconSize = size * (hasOwnFrame and FRAMED_ART_SCALE or ICON_SCALE)
-    self.icon:SetSize(iconSize, iconSize)
+    if not isShaped then
+        self.border:SetSize(size * BORDER_SCALE, size * BORDER_SCALE)
+        self.background:SetSize(size * BACKGROUND_SCALE, size * BACKGROUND_SCALE)
+        local iconSize = size * (hasOwnFrame and FRAMED_ART_SCALE or ICON_SCALE)
+        self.icon:SetSize(iconSize, iconSize)
+    end
     self.label:SetPoint("LEFT", self, "RIGHT", 6, 0)
     self.label:SetWidth(width)
     self:SetHitRectInsets(0, mode == "both" and -(width + 6) or 0, 0, 0)

@@ -17,22 +17,19 @@ LibDataBroker objects, the addon compartment and Blizzard's expansion button are
   the player's OK: reparent, and hook `SetPoint`/`SetParent` only on collected frames. Never move
   protected frames, and nothing in combat (wait for `PLAYER_REGEN_ENABLED`). Check the
   HereBeDragons pin table (`minimapPins`) against the real library with TomTom or HandyNotes.
-- **Compartment duplicates**: an addon whose compartment title and LibDataBroker name differ
-  shows twice when addons without a minimap button are shown too.
-- **Saved keys of removed addons** stay in `buttonOrder` and `hiddenButtons`; prune them after a
-  while.
 
 ## Buttons
 
 - Rename single buttons.
-- Button shapes: circle, square, diamond; more with our own mask textures.
 - Blizzard's expansion button: while its original is hidden, its pulse and alerts (renown, new
   content) can't be seen. Show a glow on the menu's copy.
 
 ## Launcher
 
 - The compass arrow's measures (`COMPASS_TIP_SHARE`, `COMPASS_HALF_HEIGHT_SHARE` in
-  `Launcher/Styles/Arrow.lua`) come from one screenshot; check them at other minimap sizes.
+  `Launcher/Styles/Arrow.lua`) come from one screenshot; check them at other minimap sizes. On
+  the east side (minimap at the screen's left edge), `EAST_NUDGE` was set by eye; check it there
+  too, in place of the east arrow and beside it.
 - Ideas: the side bar's notches from Blizzard's side panels; art matching the minimap's metal
   border.
 

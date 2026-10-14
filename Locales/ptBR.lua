@@ -79,6 +79,8 @@ ns.RegisterLocale("ptBR", {
     ["Icons"] = "Ícones",
     ["Icons and names"] = "Ícones e nomes",
     ["Names only"] = "Só nomes",
+    ["Button shape"] = "Formato dos botões",
+    ["Diamond"] = "Losango",
     ["Close after clicking a button"] = "Fechar ao clicar em um botão",
     ["Behavior"] = "Comportamento",
     ["Opening and closing"] = "Abrir e fechar",

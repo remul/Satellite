@@ -48,17 +48,34 @@ local function GetLibDBIconEntries()
     return entries
 end
 
--- Names and labels of the LibDataBroker objects, lower case: [name] = true. Many addons have both
--- an object and a compartment entry (e.g. Rematch); the object's button is kept, as it has a
--- tooltip, and the entry is left out.
+-- A name to compare: lower case, letters and digits only ("Foo Bar" and "FooBar" are the same).
+local function Simplify(text)
+    return (PlainText(text):lower():gsub("[^%w]", ""))
+end
+
+-- The addon folder an icon is in (Interface\AddOns\<folder>\...), simplified, or nil: the icon
+-- tells which addon it belongs to.
+local function GetIconFolder(icon)
+    local folder = type(icon) == "string" and icon:match("[Aa][Dd][Dd][Oo][Nn][Ss][\\/]([^\\/]+)")
+    return folder and Simplify(folder)
+end
+
+-- What tells the LibDataBroker objects' addons apart, simplified: their names and labels, and the
+-- folders of their icons: [text] = true. Many addons have both an object and a compartment entry
+-- (e.g. Rematch); the object's button is kept, as it has a tooltip, and the entry is left out.
 local function GetBrokerNames()
     local names = {}
     for name, dataObject in LDB:DataObjectIterator() do
-        names[name:lower()] = true
+        names[Simplify(name)] = true
         if type(dataObject.label) == "string" then
-            names[dataObject.label:lower()] = true
+            names[Simplify(dataObject.label)] = true
+        end
+        local folder = GetIconFolder(dataObject.icon)
+        if folder then
+            names[folder] = true
         end
     end
+    names[""] = nil
     return names
 end
 
@@ -73,7 +90,10 @@ local function Sync()
     for _, entry in ipairs(AddonCompartmentFrame.registeredAddons) do
         local tocAddon = tocAddons[entry.text]
         local label = PlainText(entry.text)
-        local inBroker = brokerNames[label:lower()] or (tocAddon and brokerNames[tocAddon:lower()])
+        -- The same addon if its title, its folder or its icon's folder matches an object's.
+        local inBroker = brokerNames[Simplify(label)]
+            or (tocAddon and brokerNames[Simplify(tocAddon)])
+            or brokerNames[GetIconFolder(entry.icon) or ""]
         if not libDBIconEntries[entry] and not inBroker and tocAddon ~= addonName then
             local key = "comp:" .. (tocAddon or label)
             -- Two entries with the same text keep apart.

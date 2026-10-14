@@ -53,11 +53,17 @@ local DEFAULTS = {
     -- Buttons.GetCandidates).
     buttonOrder = {},
     hiddenButtons = {},
+    -- When each of those keys' buttons was last there: [key] = time(). Keys not seen for a while
+    -- (an addon removed) are taken out of both (see Buttons.Prune).
+    buttonsSeen = {},
     -- Put Blizzard's expansion button (the landing page) in the menu too (see Collectors/Blizzard.lua).
     includeExpansionButton = false,
     -- What the menu's buttons show: "icons", "both" (the addons' names beside their icons) or
     -- "names" (only the names, as a list).
     menuLabels = "icons",
+    -- The shape of the menu's buttons: "minimap" (Blizzard's minimap button), "circle", "square"
+    -- or "diamond" (see LauncherButton).
+    buttonShape = "minimap",
     -- Close the menu after a left-click on one of its buttons.
     closeOnClick = true,
     -- Open the menu when the mouse rests on the launcher, and close it a moment after the mouse
@@ -195,6 +201,7 @@ function ns:ADDON_LOADED(loadedName)
     ns.Broker:Setup()
     ns.Compartment:Setup()
     ns.Blizzard:Setup()
+    ns.Buttons:Setup()
     ns.Launcher:Setup()
 end
 

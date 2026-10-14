@@ -161,6 +161,9 @@ end
 
 local function Place(stack)
     local t = stack.spread
+    -- Orbiting (see SetSpread): the cluster turned around its middle; a row doesn't turn.
+    local angle = stack.arrangement == "cluster" and stack.angle or 0
+    local cos, sin = math.cos(angle), math.sin(angle)
     if stack.logo:IsShown() then
         -- The logo grows a little, as the discs do.
         local height = stack.buttonSize * LOGO_SHARE * (1 + LOGO_GROWTH * t)
@@ -179,6 +182,7 @@ local function Place(stack)
         local rest, spread = layout.rest[index], layout.spread[index]
         local x = rest[1] + (spread[1] - rest[1]) * t
         local y = rest[2] + (spread[2] - rest[2]) * t
+        x, y = x * cos - y * sin, x * sin + y * cos
         entry.disc:ClearAllPoints()
         entry.disc:SetPoint("CENTER", stack.anchor, "CENTER", stack.x + x * size, stack.y + y * size)
     end
@@ -215,7 +219,9 @@ function IconStack.Layout(stack, arrangement, buttonSize, x, y)
 end
 
 -- From not spread (0) to spread (1).
-function IconStack.SetSpread(stack, t)
-    stack.spread = t
+-- From not spread (0) to spread (1), and turned by angle (radians, counterclockwise; 0 if nil)
+-- while the discs orbit.
+function IconStack.SetSpread(stack, t, angle)
+    stack.spread, stack.angle = t, angle or 0
     Place(stack)
 end

@@ -2,8 +2,8 @@ local _, ns = ...
 
 -- What the minimap button, circle and square launchers share inside their own shapes: the stack
 -- of coloured discs (see IconStack) and a gold chevron beside the button, on the side the menu
--- opens, pointing that way. Hovered, the discs spread and the chevron nudges out; open, the discs
--- stay spread and the chevron points back.
+-- opens, pointing that way. Hovered, the discs spread and orbit and the chevron nudges out; open,
+-- the discs stay spread and the chevron points back. A pulse bounces the discs out and back.
 local StackButton = {}
 ns.StackButton = StackButton
 
@@ -14,6 +14,12 @@ local Theme = ns.Theme
 local CHEVRON_WIDTH, CHEVRON_HEIGHT, CHEVRON_GAP, CHEVRON_NUDGE = 7, 12, 3, 2
 -- Seconds to go from not hovered to hovered.
 local HOVER_TIME = 0.15
+-- While hovered, the discs orbit their middle this fast (radians a second: a turn in 6 seconds);
+-- after, they turn back the short way at this speed.
+local ORBIT_SPEED = 2 * math.pi / 6
+local UNWIND_SPEED = 4
+-- Seconds the pulse (see Pulse) takes.
+local PULSE_TIME = 0.45
 
 -- For each way: one step out of the button, and the triangle texture's coordinates (it points
 -- left) to point that way, in the eight-value form (upper left, lower left, upper right, lower
@@ -35,6 +41,7 @@ function StackButton.Create(button, drawOn, onLit)
     drawOn = drawOn or button
     local self = setmetatable({
         button = button, onLit = onLit, direction = "LEFT", hover = 0, hoverTarget = 0, progress = 0,
+        angle = 0,
     }, Meta)
     self.chevronShadow = drawOn:CreateTexture(nil, "OVERLAY", nil, 0)
     self.chevronShadow:SetTexture(Theme.TRIANGLE)
@@ -50,8 +57,27 @@ function StackButton.Create(button, drawOn, onLit)
         local step = elapsed / HOVER_TIME
         local target = self.hoverTarget
         self.hover = target > self.hover and math.min(target, self.hover + step) or math.max(target, self.hover - step)
+        local isOrbiting = target == 1
+        if isOrbiting then
+            self.angle = (self.angle + ORBIT_SPEED * elapsed) % (2 * math.pi)
+        elseif self.angle ~= 0 then
+            -- Back to where they started, the short way round.
+            local angle = self.angle > math.pi and self.angle - 2 * math.pi or self.angle
+            local unwind = UNWIND_SPEED * elapsed
+            if math.abs(angle) <= unwind then
+                self.angle = 0
+            else
+                self.angle = (angle - unwind * (angle > 0 and 1 or -1)) % (2 * math.pi)
+            end
+        end
+        if self.pulseTime then
+            self.pulseTime = self.pulseTime + elapsed
+            if self.pulseTime >= PULSE_TIME then
+                self.pulseTime = nil
+            end
+        end
         self:Draw()
-        if self.hover == target then
+        if self.hover == target and not isOrbiting and self.angle == 0 and not self.pulseTime then
             self.animator:Hide()
         end
     end)
@@ -66,7 +92,9 @@ end
 
 -- Runs every frame while it's animating: colours only change when it lights up or goes back.
 function Methods:Draw()
-    ns.IconStack.SetSpread(self.stack, math.max(self.hover, self.progress))
+    -- A pulse spreads the discs and lets them go back, once.
+    local pulse = self.pulseTime and math.sin(math.pi * self.pulseTime / PULSE_TIME) or 0
+    ns.IconStack.SetSpread(self.stack, math.max(self.hover, self.progress, pulse), self.angle)
     local isLit = self.hover > 0.5
     if isLit ~= self.isLit then
         self.isLit = isLit
@@ -116,5 +144,11 @@ end
 
 function Methods:SetHovered(isHovered)
     self.hoverTarget = isHovered and 1 or 0
+    self.animator:Show()
+end
+
+-- Bounces the discs out and back, to show something new (see Launcher.Pulse).
+function Methods:Pulse()
+    self.pulseTime = 0
     self.animator:Show()
 end

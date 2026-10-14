@@ -215,6 +215,36 @@ function Launcher.SetupOpener(button)
     end)
 end
 
+-- New buttons ----------------------------------------------------------------------------------
+-- The launcher pulses when an addon adds a button while the game runs (an addon loaded later):
+-- not while addons are still loading after login, while the menu is open (the button shows), or
+-- while the settings are open (they add and take out buttons themselves).
+local PULSE_START_DELAY = 5
+local knownButtons = {}
+local isPulseReady = false
+
+-- The menu's buttons now, [key] = true.
+local function RememberButtons()
+    wipe(knownButtons)
+    for _, button in ipairs(ns.Buttons.GetLauncherButtons()) do
+        knownButtons[button.key] = true
+    end
+end
+
+local function PulseForNewButtons()
+    if not isPulseReady then
+        return
+    end
+    local isNew = false
+    for _, button in ipairs(ns.Buttons.GetLauncherButtons()) do
+        isNew = isNew or not knownButtons[button.key]
+    end
+    RememberButtons()
+    if isNew and not ns.Menu.IsOpen() and not ns.Settings.IsShown() and current.Pulse then
+        current:Pulse()
+    end
+end
+
 -- The minimap's shape, which minimap addons (ElvUI, SexyMap...) set with the global
 -- GetMinimapShape, as LibDBIcon reads it: for each quarter (bottom right, bottom left, top right,
 -- top left), whether it's round. Without it, the minimap is round.
@@ -326,6 +356,11 @@ function Launcher:Setup()
         ns.Alert.Start()
 
         ns.Buttons.OnChanged(Launcher.Refresh)
+        ns.Buttons.OnChanged(PulseForNewButtons)
+        C_Timer.After(PULSE_START_DELAY, function()
+            RememberButtons()
+            isPulseReady = true
+        end)
         -- The guild is known a moment after login, and can change: the Prisma logo (see IconStack)
         -- shows or goes. The roster updates often; only a change of guild redraws.
         local wasInPrisma = ns.IconStack.IsInPrisma()

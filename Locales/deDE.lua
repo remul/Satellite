@@ -79,6 +79,8 @@ ns.RegisterLocale("deDE", {
     ["Icons"] = "Symbole",
     ["Icons and names"] = "Symbole und Namen",
     ["Names only"] = "Nur Namen",
+    ["Button shape"] = "Button-Form",
+    ["Diamond"] = "Raute",
     ["Close after clicking a button"] = "Nach Klick auf einen Button schließen",
     ["Behavior"] = "Verhalten",
     ["Opening and closing"] = "Öffnen und Schließen",

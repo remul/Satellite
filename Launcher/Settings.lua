@@ -582,6 +582,16 @@ local function CreatePanel()
         end, function(value)
             ns.db.launcher.buttonSize = value
         end),
+        buttonShape = CreateDropdown(L["Button shape"], {
+            { L["Minimap button"], "minimap" },
+            { L["Circle"], "circle" },
+            { L["Square"], "square" },
+            { L["Diamond"], "diamond" },
+        }, function()
+            return ns.db.buttonShape
+        end, function(value)
+            ns.db.buttonShape = value
+        end),
         menuRows = CreateSlider(L["Buttons per column"], 0, 12, function()
             return ns.db.menuRows
         end, function(value)
@@ -690,28 +700,14 @@ local function LayoutColumn(entries, left)
     return y
 end
 
--- Shows the current tab: the rows that apply to the current style, or the list of buttons; and
--- fits the panel.
-local function UpdatePanel()
-    UpdateTabs()
-    local page = panel.buttonsPage
-    page:SetShown(currentTab == "buttons")
-    for _, row in pairs(panel.rows) do
-        row:Hide()
-    end
-    if currentTab == "buttons" then
-        page:ClearAllPoints()
-        page:SetPoint("TOPLEFT", PADDING, -GetContentTop())
-        UpdateButtonsPage(page)
-        panel:SetHeight(GetContentTop() + page:GetHeight() + PADDING)
-        PlacePanel()
-        return
-    end
+-- The rows of a tab ("launcher" or "behavior") that apply to the current style, in columns of
+-- { row, isShown } pairs.
+local function GetColumns(tab)
     local rows = panel.rows
     local style = ns.db.style
     local launcher = ns.Launcher.GetStyle()
     local columns
-    if currentTab == "behavior" then
+    if tab == "behavior" then
         -- The Always open style's menu doesn't open or close.
         local canClose = not launcher.alwaysOpen
         -- Docked on an edge, the circle and square open away from it.
@@ -754,24 +750,65 @@ local function UpdatePanel()
                 { rows.menuHeader, true },
                 -- Names only have no buttons to size.
                 { rows.buttonSize, ns.db.menuLabels ~= "names" },
+                { rows.buttonShape, ns.db.menuLabels ~= "names" },
                 { rows.menuRows, true },
                 { rows.menuLabels, true },
             },
         }
     end
-    -- Columns with nothing to show for this style are left out; the others move left.
-    local height, left = GetContentTop(), PADDING
+    return columns
+end
+
+-- How tall the panel is with a tab's columns.
+local function MeasureColumns(columns)
+    local height = GetContentTop()
     for _, column in ipairs(columns) do
+        local y = GetContentTop()
+        for _, entry in ipairs(column) do
+            local row, isShown = entry[1], entry[2]
+            if isShown then
+                if row.Update then
+                    row.Update()
+                end
+                y = y + row:GetHeight() + ROW_SPACING
+            end
+        end
+        height = math.max(height, y)
+    end
+    return height - ROW_SPACING + PADDING
+end
+
+-- Shows the current tab: the rows that apply to the current style, or the list of buttons. The
+-- panel is as tall as its tallest tab, so it doesn't move when switching tabs (near the screen's
+-- edge it's kept on the screen, which would move it with every change of height).
+local function UpdatePanel()
+    UpdateTabs()
+    local page = panel.buttonsPage
+    page:SetShown(currentTab == "buttons")
+    for _, row in pairs(panel.rows) do
+        row:Hide()
+    end
+    panel:SetHeight(math.max(GetContentTop() + page:GetHeight() + PADDING,
+        MeasureColumns(GetColumns("launcher")), MeasureColumns(GetColumns("behavior"))))
+    if currentTab == "buttons" then
+        page:ClearAllPoints()
+        page:SetPoint("TOPLEFT", PADDING, -GetContentTop())
+        UpdateButtonsPage(page)
+        PlacePanel()
+        return
+    end
+    -- Columns with nothing to show for this style are left out; the others move left.
+    local left = PADDING
+    for _, column in ipairs(GetColumns(currentTab)) do
         local hasRows = false
         for _, entry in ipairs(column) do
             hasRows = hasRows or entry[2]
         end
         if hasRows then
-            height = math.max(height, LayoutColumn(column, left))
+            LayoutColumn(column, left)
             left = left + COLUMN_WIDTH + COLUMN_GAP
         end
     end
-    panel:SetHeight(height - ROW_SPACING + PADDING)
     PlacePanel()
 end
 

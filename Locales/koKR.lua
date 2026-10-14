@@ -79,6 +79,8 @@ ns.RegisterLocale("koKR", {
     ["Icons"] = "아이콘",
     ["Icons and names"] = "아이콘과 이름",
     ["Names only"] = "이름만",
+    ["Button shape"] = "버튼 모양",
+    ["Diamond"] = "마름모",
     ["Close after clicking a button"] = "버튼을 클릭하면 닫기",
     ["Behavior"] = "동작",
     ["Opening and closing"] = "열기와 닫기",

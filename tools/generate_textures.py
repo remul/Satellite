@@ -19,6 +19,7 @@ All are white (tinted in game with SetVertexColor):
   RailFill.tga         the side bar itself: corners cut off by 6 pixels (32x32)
   RailBorder.tga       its outline, 1.5 pixels
   Disc.tga             a filled circle, the round launcher (64x64)
+  Diamond.tga          a filled diamond, the menu's diamond buttons (64x64)
   Triangle.tga         a triangle pointing left, the launchers' chevron (64x64)
 """
 import math
@@ -129,6 +130,8 @@ write_tga("RailBorder.tga", coverage(32, lambda x, y: 0 <= cut_distance(x, y, 32
 
 # The round launcher: one pixel of margin keeps the edges from bleeding when scaled.
 write_tga("Disc.tga", coverage(64, lambda x, y: math.hypot(x - 32, y - 32) <= 31))
+# The menu's diamond buttons, also their icons' mask.
+write_tga("Diamond.tga", coverage(64, lambda x, y: abs(x - 32) + abs(y - 32) <= 31))
 
 # The launchers' chevron, pointing left.
 TRIANGLE = [(4, 32), (58, 5), (58, 59)]

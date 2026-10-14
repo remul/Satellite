@@ -79,6 +79,8 @@ ns.RegisterLocale("ruRU", {
     ["Icons"] = "Значки",
     ["Icons and names"] = "Значки и названия",
     ["Names only"] = "Только названия",
+    ["Button shape"] = "Форма кнопок",
+    ["Diamond"] = "Ромб",
     ["Close after clicking a button"] = "Закрывать после нажатия на кнопку",
     ["Behavior"] = "Поведение",
     ["Opening and closing"] = "Открытие и закрытие",
