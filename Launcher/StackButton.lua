@@ -41,6 +41,7 @@ function StackButton.Create(button, drawOn, onLit)
     self.chevronShadow:SetVertexColor(Theme.OUTLINE:GetRGBA())
     self.chevron = drawOn:CreateTexture(nil, "OVERLAY", nil, 1)
     self.chevron:SetTexture(Theme.TRIANGLE)
+    self.chevrons = { self.chevronShadow, self.chevron }
     self.stack = ns.IconStack.Create(drawOn, button)
     self.color, self.hoverColor = Theme.GetAccentColors()
     self.animator = CreateFrame("Frame", nil, button)
@@ -83,7 +84,7 @@ function Methods:Draw()
     local height = (sideways and CHEVRON_HEIGHT or CHEVRON_WIDTH) * scale
     self.chevron:SetSize(width, height)
     self.chevronShadow:SetSize(width + 2.5, height + 2.5)
-    for _, texture in ipairs({ self.chevronShadow, self.chevron }) do
+    for _, texture in ipairs(self.chevrons) do
         texture:ClearAllPoints()
         texture:SetPoint("CENTER", self.button, "CENTER", way.x * distance, way.y * distance)
         ---@diagnostic disable-next-line: redundant-parameter

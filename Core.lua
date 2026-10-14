@@ -10,11 +10,12 @@ local DEFAULTS = {
     debug = false,
     -- The launcher (see Launcher/Launcher.lua), in pixels: distance of its arrow from the
     -- minimap's west compass arrow (when it's beside it, not in its place), and size of the
-    -- buttons in its menu; and the launcher's own size, in percent of its normal size.
+    -- buttons in its menu; and the launcher's own size for each style, in percent of its normal
+    -- size ([style] = percent; 100 while missing), so each style keeps its own.
     launcher = {
         gap = 4,
         buttonSize = 28,
-        scale = 100,
+        scales = {},
     },
     -- The launcher's style (see Launcher/Styles): "satellite", "arrow", "circle", "square",
     -- "sideBar" or "alwaysOpen".
@@ -34,13 +35,13 @@ local DEFAULTS = {
     openDirection = "AUTO",
     -- The colours of the discs on the minimap button, circle and square (see IconStack):
     -- "colored", "silver", "gold", "bronze" or "class".
-    discColors = "colored",
+    discColors = "gold",
     -- The border colour of the minimap button, circle and square, and their chevron (see
     -- Theme.GetAccentColors): "gold", "silver", "bronze" or "class".
     borderColor = "gold",
     -- The glyphs on those discs: "adventure" (a dragon, a potion and a sword) or "class" (the
-    -- player's class's glyph on all three); or "prisma", the guild Prisma's logo instead of the
-    -- discs, for its members (see IconStack).
+    -- player's class and spec); or "prisma", the guild Prisma's logo instead of the discs, for its
+    -- members (see IconStack).
     discSymbols = "adventure",
     -- How many buttons go down each column of the menu before the next column starts; 0 lets
     -- Satellite choose (rows for few buttons, more as they grow).
@@ -54,8 +55,18 @@ local DEFAULTS = {
     hiddenButtons = {},
     -- Put Blizzard's expansion button (the landing page) in the menu too (see Collectors/Blizzard.lua).
     includeExpansionButton = false,
-    -- Show the addons' names beside their buttons in the menu.
-    showNames = false,
+    -- What the menu's buttons show: "icons", "both" (the addons' names beside their icons) or
+    -- "names" (only the names, as a list).
+    menuLabels = "icons",
+    -- Close the menu after a left-click on one of its buttons.
+    closeOnClick = true,
+    -- Open the menu when the mouse rests on the launcher, and close it a moment after the mouse
+    -- left the launcher and the menu (see Launcher.lua).
+    openOnHover = false,
+    closeOnLeave = false,
+    -- A dot on the launcher when an addon changed its icon since the menu was last opened (see
+    -- Launcher/Alert.lua).
+    showAlerts = true,
     -- Hide the addons' own LibDBIcon minimap buttons while the launcher shows them.
     hideMinimapButtons = true,
     -- Also show addons without a minimap button: only in the addon compartment, or LibDataBroker
@@ -138,6 +149,8 @@ end
 
 -- Prints the buttons Satellite found, to check what it collects.
 function ns.PrintButtons()
+    -- Hand-made minimap buttons are only looked for now (see Collectors/Scan.lua).
+    ns.Scan.Run()
     local list = ns.Buttons.GetAll()
     if #list == 0 then
         ns:Print(L["No buttons found yet."])
@@ -182,7 +195,6 @@ function ns:ADDON_LOADED(loadedName)
     ns.Broker:Setup()
     ns.Compartment:Setup()
     ns.Blizzard:Setup()
-    ns.Scan:Setup()
     ns.Launcher:Setup()
 end
 

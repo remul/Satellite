@@ -147,7 +147,6 @@ local function Place()
     tab:SetPoint(inward, bar, inward)
 end
 
-
 -- Which way the triangle points now, so it's only redrawn when that changes (see OnProgress).
 local pointedAt
 
@@ -170,6 +169,13 @@ function Style:OnProgress(progress)
         pointedAt = pointing
         PointTriangle(pointing)
     end
+end
+
+-- The alert dot (see Alert): on the tab's corner toward the middle of the screen and up (or
+-- right, on the top and bottom edges).
+local ALERT_CORNERS = { LEFT = "TOPRIGHT", RIGHT = "TOPLEFT", TOP = "BOTTOMRIGHT", BOTTOM = "TOPRIGHT" }
+function Style:GetAlertPoint()
+    return tab, ALERT_CORNERS[ns.db.sideBar.side], 0, 0
 end
 
 function Style:SetHovered(hovered)
@@ -199,9 +205,15 @@ local function FollowCursor()
     else
         along, room = x - width / 2, (width - railLength) / 2
     end
+    local isNewSide = side ~= ns.db.sideBar.side
     ns.db.sideBar.side = side
     ns.db.sideBar.offset = math.max(-room, math.min(room, along))
-    Place()
+    -- On another edge, the menu opens another way too.
+    if isNewSide then
+        Style:Refresh()
+    else
+        Place()
+    end
 end
 
 function Style:OnDragStart()

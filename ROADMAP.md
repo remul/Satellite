@@ -4,42 +4,38 @@ Planned features, ideas and open questions for Satellite. Move an entry to
 [CHANGELOG.md](CHANGELOG.md) when it ships, and delete it here.
 
 Satellite gathers other addons' minimap buttons into one launcher. The launcher comes in several
-styles; the first is a gold arrow next to the minimap that slides out a menu.
+styles; the default is a round button with three discs on the minimap's ring that slides out a
+menu.
 
 ## Collecting buttons
 
-All three sources are found (see `Collectors/`); each entry has a stable key so order and settings
-survive reloads. Still to do:
+LibDataBroker objects, the addon compartment and Blizzard's expansion button are collected (see
+`Collectors/`); each entry has a stable key, so order and settings survive reloads. Still to do:
 
-- **LibDataBroker** (`ldb:<name>`): most addons. Read the data objects
-  (`DataObjectIterator`, `LibDataBroker_DataObjectCreated`) and build our own buttons from `icon`,
-  `iconCoords`, `label`, `text`, `OnClick`, `OnTooltipShow`. Hide LibDBIcon's own button
-  (`LibDBIcon10_<name>`, `LibDBIcon_IconCreated`). Only `type == "launcher"` by default; data
-  sources (live text, e.g. coordinates) as an option.
-- **Minimap scan** (`frame:<name>`): ask the user before collecting what the scan finds. Reparent,
-  and hook `SetPoint`/`SetParent` only on collected frames. Check the HereBeDragons pin table
-  (`minimapPins`) against the real library once TomTom or HandyNotes is installed.
-- Never move protected frames, and nothing in combat (wait for `PLAYER_REGEN_ENABLED`).
+- **Hand-made minimap buttons** (`frame:<name>`): the scan finds them, but only on demand
+  (`/satellite list`, `/satellite scan`), and they're only listed. Bring them into the menu with
+  the player's OK: reparent, and hook `SetPoint`/`SetParent` only on collected frames. Never move
+  protected frames, and nothing in combat (wait for `PLAYER_REGEN_ENABLED`). Check the
+  HereBeDragons pin table (`minimapPins`) against the real library with TomTom or HandyNotes.
+- **Compartment duplicates**: an addon whose compartment title and LibDataBroker name differ
+  shows twice when addons without a minimap button are shown too.
+- **Saved keys of removed addons** stay in `buttonOrder` and `hiddenButtons`; prune them after a
+  while.
 
 ## Buttons
 
-- Sort by hand (drag) or by name; hide single buttons; rename them.
-- Icons only, icons with names, or names only.
+- Rename single buttons.
 - Button shapes: circle, square, diamond; more with our own mask textures.
+- Blizzard's expansion button: while its original is hidden, its pulse and alerts (renown, new
+  content) can't be seen. Show a glow on the menu's copy.
 
 ## Launcher
 
-- **Arrow and menu** (first version done). Next: labels (icons with names), drag to sort, hide
-  or rename single buttons; square minimaps (`GetMinimapShape`); the scanned hand-made buttons
-  (with the player's OK). The minimap's measures (`COMPASS_TIP_SHARE`,
-  `COMPASS_HALF_HEIGHT_SHARE` in `Launcher/Launcher.lua`) come from one screenshot; check them at
-  other minimap sizes.
-- Styles done: compass arrow, circle, square, triangle, side bar, always open. Ideas: the side
-  bar's notches from Blizzard's side panels; a size setting for the shapes.
-- Animations with AnimationGroups: arrow flip, buttons popping in one after another, hover glow.
-- Art matching the minimap's metal border and gold arrows: TGAs in `Media/`.
+- The compass arrow's measures (`COMPASS_TIP_SHARE`, `COMPASS_HALF_HEIGHT_SHARE` in
+  `Launcher/Styles/Arrow.lua`) come from one screenshot; check them at other minimap sizes.
+- Ideas: the side bar's notches from Blizzard's side panels; art matching the minimap's metal
+  border.
 
 ## Before release
 
-- Screenshots.
-- Check the name once more on CurseForge, Wago and WoWInterface.
+- Screenshots for CurseForge.

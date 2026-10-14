@@ -41,11 +41,18 @@ local function UpdateMinimapButton(name)
     end
     local button = ns.Buttons.Get("ldb:" .. name)
     local hide = ns.db.hideMinimapButtons and button ~= nil and ns.Buttons.IsInLauncher(button)
-    if hide and not originalParents[minimapButton] then
-        originalParents[minimapButton] = minimapButton:GetParent()
-        minimapButton:SetParent(hiddenParent)
-    elseif not hide and originalParents[minimapButton] then
-        minimapButton:SetParent(originalParents[minimapButton])
+    -- Checks where it is each time: another button collector may have moved it since.
+    local parent = minimapButton:GetParent()
+    if hide then
+        if parent ~= hiddenParent then
+            originalParents[minimapButton] = parent
+            minimapButton:SetParent(hiddenParent)
+        end
+    elseif originalParents[minimapButton] then
+        -- Put back only if it's still hidden here, not taken out of another addon's bar.
+        if parent == hiddenParent then
+            minimapButton:SetParent(originalParents[minimapButton])
+        end
         originalParents[minimapButton] = nil
     end
 end

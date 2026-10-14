@@ -28,10 +28,9 @@ end
 function Options:Setup()
     category, layout = Settings.RegisterVerticalLayoutCategory(ns.TITLE)
 
+    -- The addons' own minimap buttons follow (Broker and Blizzard listen for changes).
     local function OnButtonsChanged()
         ns.Buttons.NotifyChanged()
-        ns.Broker.UpdateMinimapButtons()
-        ns.Blizzard.UpdateMinimapButton()
     end
     AddSection(L["Buttons"])
     AddCheckbox("hideMinimapButtons", L["Hide the addons' own minimap buttons"],
@@ -46,7 +45,11 @@ function Options:Setup()
     -- The launcher's look and place have their own panel beside the menu (see Launcher/Settings.lua).
     AddSection(L["Launcher"])
     layout:AddInitializer(CreateSettingsButtonInitializer(L["Launcher settings"], L["Open"], function()
-        HideUIPanel(SettingsPanel)
+        -- Hiding Blizzard's panel from here in combat can block its own changes; Satellite's
+        -- panel shows over it anyway.
+        if not InCombatLockdown() then
+            HideUIPanel(SettingsPanel)
+        end
         ns.Settings.Show()
     end, L["Or right-click the launcher."], true))
 
@@ -56,9 +59,10 @@ function Options:Setup()
     Settings.RegisterAddOnCategory(category)
 end
 
--- Blizzard's Options can't be opened in combat.
+-- Blizzard's Options can't be opened in combat: the launcher's own settings open instead.
 function Options:Open()
     if InCombatLockdown() then
+        ns.Settings.Show()
         return
     end
     Settings.OpenToCategory(category:GetID())

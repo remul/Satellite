@@ -19,11 +19,14 @@ local MIN_COLUMNS, MIN_ROWS = 4, 2
 local function RowsFor(count)
     return count <= 6 and 1 or count <= 16 and 2 or 3
 end
--- With names (a setting): each name's width beside its button, the space between columns, and
--- the most buttons in a column; the buttons then go down the columns, like a list.
+-- With names (ns.db.menuLabels): each name's width beside its button, the space between columns,
+-- and the most buttons in a column; the buttons then go down the columns, like a list. With names
+-- only, a row's height, the space between rows, and the most rows in a column.
 local LABEL_WIDTH, LABEL_GAP = 110, 6
 local NAMED_COLUMN_SPACING = 14
 local MAX_NAMED_ROWS = 8
+local NAME_ROW_HEIGHT, NAME_ROW_SPACING = 20, 2
+local MAX_NAME_ROWS = 12
 
 local OPEN_TIME, CLOSE_TIME = 0.28, 0.2
 -- How far it slides while it fades in (when not uncovered).
@@ -36,6 +39,8 @@ local clip, panel
 local shownFrames = {}
 
 local isOpen = false
+-- Whether the launcher is hovered (the menu lights up with it).
+local isHovered = false
 -- Open all the time (the Always open style): no animation, and it can't be closed.
 local isAlwaysOpen = false
 -- 0 = closed, 1 = open; animated in between.
@@ -49,7 +54,9 @@ local onProgress -- function(progress), to move the launcher along
 local frameLevel = 1
 -- isByColumn: the buttons go down each column before the next (with names, or a set number per
 -- column), instead of along each row.
-local layout = { columns = 1, rows = 1, cell = 0, cellX = 0, width = 0, height = 0, isByColumn = false }
+local layout = {
+    columns = 1, rows = 1, size = 0, cell = 0, cellX = 0, width = 0, height = 0, isByColumn = false,
+}
 
 local function EaseOut(x)
     return 1 - (1 - x) ^ 3
@@ -60,13 +67,18 @@ end
 -- Fits the menu to count buttons. With a number of buttons per column set (ns.db.menuRows), that
 -- many down each column, and as many columns as needed. Otherwise rows from RowsFor, as many
 -- columns as needed, and at least MIN_COLUMNS by MIN_ROWS; with names, columns of up to
--- MAX_NAMED_ROWS.
+-- MAX_NAMED_ROWS (MAX_NAME_ROWS with names only).
 local function UpdateSize(count)
-    local size = ns.db.launcher.buttonSize
-    local cell = size + BUTTON_SPACING
+    local labels = ns.db.menuLabels
+    local isNameOnly = labels == "names"
+    local size = isNameOnly and NAME_ROW_HEIGHT or ns.db.launcher.buttonSize
+    local spacingY = isNameOnly and NAME_ROW_SPACING or BUTTON_SPACING
+    local cell = size + spacingY
     local item, spacingX
-    if ns.db.showNames then
+    if labels == "both" then
         item, spacingX = size + LABEL_GAP + LABEL_WIDTH, NAMED_COLUMN_SPACING
+    elseif isNameOnly then
+        item, spacingX = LABEL_WIDTH, NAMED_COLUMN_SPACING
     else
         item, spacingX = size, BUTTON_SPACING
     end
@@ -74,15 +86,17 @@ local function UpdateSize(count)
     local perColumn = ns.db.menuRows
     if perColumn > 0 then
         rows, minColumns, minRows = math.max(1, math.min(count, perColumn)), 1, 1
-    elseif ns.db.showNames then
-        rows, minColumns, minRows = math.max(1, math.min(count, MAX_NAMED_ROWS)), 1, MIN_ROWS
+    elseif labels ~= "icons" then
+        rows = math.max(1, math.min(count, isNameOnly and MAX_NAME_ROWS or MAX_NAMED_ROWS))
+        minColumns, minRows = 1, MIN_ROWS
     else
         rows, minColumns, minRows = RowsFor(count), MIN_COLUMNS, MIN_ROWS
     end
     local columns = math.max(1, math.ceil(count / rows))
-    layout.isByColumn = perColumn > 0 or ns.db.showNames
+    layout.isByColumn = perColumn > 0 or labels ~= "icons"
+    layout.size = size
     layout.columns, layout.cell, layout.cellX = columns, cell, item + spacingX
-    layout.height = math.max(minRows, rows) * cell - BUTTON_SPACING + 2 * PADDING
+    layout.height = math.max(minRows, rows) * cell - spacingY + 2 * PADDING
     layout.width = math.max(minColumns, columns) * layout.cellX - spacingX + 2 * PADDING
     layout.rows = layout.isByColumn and rows or math.ceil(count / columns)
     panel:SetSize(layout.width, layout.height)
@@ -160,7 +174,6 @@ end
 local function UpdateButtons(withAnimation)
     local buttons = ns.Buttons.GetLauncherButtons()
     UpdateSize(#buttons)
-    local size = ns.db.launcher.buttonSize
     local keys = {}
     wipe(shownFrames)
     for index, button in ipairs(buttons) do
@@ -170,8 +183,7 @@ local function UpdateButtons(withAnimation)
             column, row = math.floor((index - 1) / layout.rows), (index - 1) % layout.rows
         end
         local buttonFrame = ns.LauncherButton.Get(panel, button)
-        ns.LauncherButton.SetSize(buttonFrame, size)
-        ns.LauncherButton.SetLabel(buttonFrame, ns.db.showNames, LABEL_WIDTH)
+        ns.LauncherButton.SetLook(buttonFrame, ns.db.menuLabels, layout.size, LABEL_WIDTH)
         buttonFrame:SetFrameLevel(panel:GetFrameLevel() + 2)
         buttonFrame:ClearAllPoints()
         buttonFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING + column * layout.cellX,
@@ -199,38 +211,59 @@ end
 -- Space kept between the menu and the screen's edges.
 local SCREEN_MARGIN = 4
 
--- The menu is centred on its launcher across the way it opens (up and down for a menu opening to
--- the side). How far to move it that way so it stays on the screen, e.g. beside a launcher near
--- the screen's top: x, y in the clipping frame's units, for an anchor at relativeTo's middle
--- moved by x, y.
-local function GetScreenShift(relativeTo, x, y)
-    local centerX, centerY = relativeTo:GetCenter()
-    if not centerX then
+-- How far to move the menu so it stays on the screen: x, y in the clipping frame's units, for an
+-- anchor at relativeTo's relativePoint moved by x, y. Across the way it opens (it's centred on its
+-- launcher that way), e.g. beside a launcher near the screen's top; and, unless it's uncovered
+-- (its launcher rides along), the way it opens too, e.g. near the screen's left edge.
+local POINT_SHARES = { LEFT = 0, RIGHT = 1, BOTTOM = 0, TOP = 1 }
+local function GetScreenShift(relativeTo, relativePoint, x, y)
+    local left, bottom, width, height = relativeTo:GetRect()
+    if not left then
         return 0, 0
     end
     local uiScale = UIParent:GetEffectiveScale()
     local toScreen = relativeTo:GetEffectiveScale() / uiScale
     local clipToScreen = clip:GetEffectiveScale() / uiScale
-    local function Shift(middle, length, screenLength)
-        local low, high = middle - length / 2, middle + length / 2
+    -- The anchor on the screen, and the menu's size there.
+    local shareX = POINT_SHARES[relativePoint:match("LEFT") or relativePoint:match("RIGHT") or ""] or 0.5
+    local shareY = POINT_SHARES[relativePoint:match("BOTTOM") or relativePoint:match("TOP") or ""] or 0.5
+    local anchorX = (left + width * shareX) * toScreen + x * clipToScreen
+    local anchorY = (bottom + height * shareY) * toScreen + y * clipToScreen
+    local menuWidth, menuHeight = layout.width * clipToScreen, layout.height * clipToScreen
+    -- The menu's low and high ends on each axis.
+    local lowX, lowY = anchorX - menuWidth / 2, anchorY - menuHeight / 2
+    if direction == "LEFT" then
+        lowX = anchorX - menuWidth
+    elseif direction == "RIGHT" then
+        lowX = anchorX
+    elseif direction == "UP" then
+        lowY = anchorY
+    else
+        lowY = anchorY - menuHeight
+    end
+    local function Shift(low, length, screenLength)
         if low < SCREEN_MARGIN then
             return SCREEN_MARGIN - low
-        elseif high > screenLength - SCREEN_MARGIN then
-            return screenLength - SCREEN_MARGIN - high
+        elseif low + length > screenLength - SCREEN_MARGIN then
+            return screenLength - SCREEN_MARGIN - low - length
         end
         return 0
     end
-    if IsVertical() then
-        local middle = centerX * toScreen + x * clipToScreen
-        return Shift(middle, layout.width * clipToScreen, UIParent:GetWidth()) / clipToScreen, 0
+    local shiftX = Shift(lowX, menuWidth, UIParent:GetWidth())
+    local shiftY = Shift(lowY, menuHeight, UIParent:GetHeight())
+    if isUncovered then
+        if IsVertical() then
+            shiftY = 0
+        else
+            shiftX = 0
+        end
     end
-    local middle = centerY * toScreen + y * clipToScreen
-    return 0, Shift(middle, layout.height * clipToScreen, UIParent:GetHeight()) / clipToScreen
+    return shiftX / clipToScreen, shiftY / clipToScreen
 end
 
 -- Puts the menu's launcher-side end at (relativeTo, relativePoint, x, y), sliding out toward
--- newDirection ("LEFT", "RIGHT", "UP" or "DOWN"), moved along that end as far as it takes to stay
--- on the screen; it moves and hides with parent. The panel is fixed to the clipping frame's far
+-- newDirection ("LEFT", "RIGHT", "UP" or "DOWN"), moved as far as it takes to stay on the screen
+-- (see GetScreenShift); it moves and hides with parent. The panel is fixed to the clipping frame's far
 -- end (see Draw). uncover: uncovered by the clipping frame growing from that end, instead of
 -- fading in.
 function Menu.Place(parent, relativeTo, relativePoint, x, y, newDirection, uncover)
@@ -242,9 +275,19 @@ function Menu.Place(parent, relativeTo, relativePoint, x, y, newDirection, uncov
     Menu.SetFrameLevel(frameLevel)
     clip:ClearAllPoints()
     local near = ANCHORS[direction][1]
-    local shiftX, shiftY = GetScreenShift(relativeTo, x, y)
+    local shiftX, shiftY = GetScreenShift(relativeTo, relativePoint, x, y)
     clip:SetPoint(near, relativeTo, relativePoint, x + shiftX, y + shiftY)
     Draw()
+end
+
+-- How far the menu still moves until it's open (x, y in UIParent's units): the rest of the slide,
+-- or of the clipping frame's growth while it's uncovered. 0, 0 once it's open.
+function Menu.GetDistanceToOpen()
+    local stepX, stepY = unpack(STEPS[direction])
+    local length = IsVertical() and layout.height or layout.width
+    local rest = (isUncovered and length or SLIDE_DISTANCE) * (1 - progress)
+    rest = rest * clip:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return stepX * rest, stepY * rest
 end
 
 -- The menu's frame level; its buttons go 3 above.
@@ -263,6 +306,7 @@ end
 function Menu.Open()
     isOpen = true
     UpdateButtons(true)
+    ns.Alert.OnMenuOpened()
     Animate(1, OPEN_TIME)
 end
 
@@ -275,6 +319,7 @@ function Menu.Close()
     for _, buttonFrame in ipairs(shownFrames) do
         ns.LauncherButton.Disappear(buttonFrame)
     end
+    ns.Alert.OnMenuClosed()
     Animate(0, CLOSE_TIME)
 end
 
@@ -301,13 +346,16 @@ function Menu.Measure()
     UpdateSize(#ns.Buttons.GetLauncherButtons())
 end
 
--- Redraws after the buttons or settings changed.
+-- Redraws after the buttons or settings changed (the border colour too).
 function Menu.Refresh()
     UpdateButtons(false)
+    Theme.SetBoxHovered(panel.fill, panel.border, isHovered)
     Draw()
 end
 
-function Menu.SetHovered(isHovered)
+-- Lights up while the launcher is hovered; its border is in the launcher's border colour.
+function Menu.SetHovered(hovered)
+    isHovered = hovered
     Theme.SetBoxHovered(panel.fill, panel.border, isHovered)
 end
 
@@ -317,6 +365,7 @@ function Menu.GetPanel()
 end
 
 -- The panel takes the mouse, so clicks on its background don't reach the game world behind it.
+-- A right-click there opens the settings, as on the launcher (the Always open style has none).
 function Menu.Setup()
     clip = CreateFrame("Frame", nil, UIParent)
     clip:SetClipsChildren(true)
@@ -324,4 +373,9 @@ function Menu.Setup()
     panel = CreateFrame("Frame", nil, clip)
     panel:EnableMouse(true)
     panel.fill, panel.border = Theme.AddBox(panel, Theme.PANEL_FILL, Theme.PANEL_BORDER, Theme.PANEL_RADIUS)
+    panel:SetScript("OnMouseUp", function(self, mouseButton)
+        if mouseButton == "RightButton" and self:IsMouseOver() then
+            ns.Settings.Toggle()
+        end
+    end)
 end

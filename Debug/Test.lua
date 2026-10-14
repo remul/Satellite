@@ -6,7 +6,10 @@ local _, ns = ...
 -- - data sources: LibDataBroker objects with text that changes every second;
 -- - compartment: entries in Blizzard's addon compartment;
 -- - buttons: hand-made minimap buttons, as older addons create them;
--- - pins: many small map pins on the minimap, as TomTom or HandyNotes add them.
+-- - pins: many small map pins on the minimap, as TomTom or HandyNotes add them;
+-- - alert: a launcher whose icon changes colour every few seconds, as BugSack's turns red (see
+--   Launcher/Alert.lua).
+-- And /satellite test error throws a Lua error, to see it in an error catcher like BugSack.
 -- A developer tool, so its messages aren't translated.
 local Test = {}
 ns.Test = Test
@@ -27,10 +30,10 @@ local ICONS = {
 -- A round mask for the pins (the one Blizzard uses for portraits).
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
-local DEFAULT_COUNTS = { launchers = 6, data = 3, compartment = 3, buttons = 4, pins = 1000 }
+local DEFAULT_COUNTS = { launchers = 6, data = 3, compartment = 3, buttons = 4, pins = 1000, alert = 1 }
 
 -- How many of each kind are shown now.
-local counts = { launchers = 0, data = 0, compartment = 0, buttons = 0, pins = 0 }
+local counts = { launchers = 0, data = 0, compartment = 0, buttons = 0, pins = 0, alert = 0 }
 
 local function Icon(i)
     return ICONS[(i - 1) % #ICONS + 1]
@@ -385,14 +388,65 @@ end
 
 -- Commands -------------------------------------------------------------------------------------
 
+-- A launcher that changes colour ------------------------------------------------------------------
+
+local ALERT_NAME = PREFIX .. "Alert"
+-- Its colours, in turn, and seconds between them.
+local ALERT_COLORS = { { 1, 1, 1 }, { 1, 0.3, 0.25 }, { 0.4, 1, 0.4 }, { 0.4, 0.7, 1 } }
+local ALERT_INTERVAL = 4
+local alertObject, alertTicker
+local alertColor = 1
+
+local function NextAlertColor()
+    alertColor = alertColor % #ALERT_COLORS + 1
+    -- Each change fires LibDataBroker's attribute callbacks, as an addon's would.
+    alertObject.iconR, alertObject.iconG, alertObject.iconB = unpack(ALERT_COLORS[alertColor])
+end
+
+-- On (1) or off (0).
+local function SetAlert(n)
+    if n > 0 then
+        if not alertObject then
+            LDB:NewDataObject(ALERT_NAME, {
+                type = "launcher",
+                icon = Icon(2),
+                label = "Test alert",
+                OnClick = OnClickPrint(ALERT_NAME),
+                OnTooltipShow = function(tooltip)
+                    tooltip:AddLine(ALERT_NAME)
+                    tooltip:AddLine("Changes colour every few seconds", 1, 1, 1)
+                end,
+            })
+            alertObject = LDB:GetDataObjectByName(ALERT_NAME)
+            iconSettings[ALERT_NAME] = { minimapPos = 200 }
+            LibDBIcon:Register(ALERT_NAME, alertObject, iconSettings[ALERT_NAME])
+        else
+            ns.Broker.Collect(ALERT_NAME, alertObject)
+            LibDBIcon:Show(ALERT_NAME)
+        end
+        if not alertTicker then
+            alertTicker = C_Timer.NewTicker(ALERT_INTERVAL, NextAlertColor)
+        end
+    elseif alertObject then
+        if alertTicker then
+            alertTicker:Cancel()
+            alertTicker = nil
+        end
+        ns.Buttons.Remove("ldb:" .. ALERT_NAME)
+        LibDBIcon:Hide(ALERT_NAME)
+    end
+    counts.alert = math.min(n, 1)
+end
+
 local SETTERS = {
     launchers = SetLaunchers,
     data = SetDataSources,
     compartment = SetCompartment,
     buttons = SetHandmadeButtons,
     pins = SetPins,
+    alert = SetAlert,
 }
-local ORDER = { "launchers", "data", "compartment", "buttons", "pins" }
+local ORDER = { "launchers", "data", "compartment", "buttons", "pins", "alert" }
 
 local function PrintStatus()
     local parts = {}
@@ -410,6 +464,8 @@ local function PrintHelp()
     print("  /satellite test compartment [n] - addon compartment entries (default 3)")
     print("  /satellite test buttons [n] - hand-made minimap buttons (default 4)")
     print("  /satellite test pins [n] [moving] - map pins on the minimap (default 1000)")
+    print("  /satellite test alert [0] - a launcher that changes colour every few seconds (0: off)")
+    print("  /satellite test error - throw a Lua error")
     print("  /satellite test clear - remove everything")
     PrintStatus()
 end
@@ -417,7 +473,9 @@ end
 -- msg: the text after "/satellite test".
 function Test.Command(msg)
     local kind, number, option = strsplit(" ", strtrim(msg or ""):lower())
-    if kind == "all" then
+    if kind == "error" then
+        error("Satellite test error (/satellite test error)")
+    elseif kind == "all" then
         for _, name in ipairs(ORDER) do
             SETTERS[name](DEFAULT_COUNTS[name])
         end

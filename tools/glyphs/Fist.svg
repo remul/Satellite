@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- A raised fist (Fury, Enhancement, Windwalker). -->
+  <path d="M21,42 H45 V60 H21 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M13,12 H51 C53,12 54,14 54,16 V38 C54,42 51,45 47,45 H19 C15,45 12,42 12,38 V14 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M22,13 V27 M32,13 V27 M42,13 V27" stroke="#000000" stroke-width="2.5" stroke-linecap="round"/><path d="M12,27 H36 C40,27 42,30 42,33 C42,36 40,38 36,38 H12 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

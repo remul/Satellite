@@ -2,9 +2,10 @@ local _, ns = ...
 local L = ns.L
 
 -- The launcher's settings: a panel beside the open menu, opened by right-clicking the launcher (or
--- from Blizzard's Options). The menu stays open, so every change shows at once. Two
--- tabs: "Launcher" in two columns (the launcher's look; the menu and the launcher's place, locked
--- or free to drag), and "Buttons", a list of the menu's buttons to show, hide and order.
+-- from Blizzard's Options). The menu stays open, so every change shows at once. Three tabs:
+-- "Launcher" in two columns (the launcher's look; the menu's layout), "Buttons", a list of the
+-- menu's buttons to show, hide and order, and "Behavior" (opening and closing; the launcher's
+-- place, locked or free to drag).
 local Settings = {}
 ns.Settings = Settings
 
@@ -51,7 +52,7 @@ local function GetStyleInfo(key)
 end
 
 local panel
--- The tab shown: "launcher" or "buttons".
+-- The tab shown: "launcher", "buttons" or "behavior".
 local currentTab = "launcher"
 -- Whether the panel stays where it is on the screen, until it's closed: once a setting changed
 -- (the menu may grow or shrink with it, and the slider being dragged must stay under the mouse),
@@ -64,7 +65,11 @@ local function FixPlace()
         return
     end
     isFixed = true
+    -- Where it will be once the menu is open, if it's still opening.
     local left, top = panel:GetLeft(), panel:GetTop()
+    local x, y = ns.Menu.GetDistanceToOpen()
+    local scale = UIParent:GetEffectiveScale() / panel:GetEffectiveScale()
+    left, top = left + x * scale, top + y * scale
     panel:ClearAllPoints()
     panel:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
 end
@@ -146,6 +151,12 @@ local function CreateCheckbox(label, getValue, setValue, help)
     row.label:SetJustifyH("LEFT")
     row.label:SetText(label)
     if help then
+        -- The box at the top, the label level with it, and the help under the label.
+        row.check:ClearAllPoints()
+        row.check:SetPoint("TOPLEFT")
+        row.label:ClearAllPoints()
+        row.label:SetPoint("TOPLEFT", row.check, "TOPRIGHT", 4, -6)
+        row.label:SetPoint("RIGHT")
         row.help = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.help:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -3)
         row.help:SetPoint("RIGHT")
@@ -157,16 +168,12 @@ local function CreateCheckbox(label, getValue, setValue, help)
     end)
     function row.Update()
         row.check:SetChecked(getValue())
-        -- Taller when the label wraps, or with help under it (the label then moves up, level with
-        -- the box's top).
-        local height = row.label:GetStringHeight()
+        -- Taller when the label wraps, or with help under it.
+        local height = row.label:GetStringHeight() + 8
         if row.help then
-            height = height + 3 + row.help:GetStringHeight()
-            row.label:ClearAllPoints()
-            row.label:SetPoint("TOPLEFT", row.check, "TOPRIGHT", 4, -6)
-            row.label:SetPoint("RIGHT")
+            height = 6 + row.label:GetStringHeight() + 3 + row.help:GetStringHeight() + 2
         end
-        row:SetHeight(math.max(26, height + 8))
+        row:SetHeight(math.max(26, height))
     end
     return row
 end
@@ -228,7 +235,7 @@ local function CreateButton(text, onClick)
 end
 
 -- The Buttons tab --------------------------------------------------------------------------------
--- Blizzard's scroll list with its drag behaviour (as in Lineup): drag a row by its grip (or
+-- Blizzard's scroll list with its drag behaviour: drag a row by its grip (or
 -- anywhere on it) to a new place, with a line showing where it goes, or use its arrows.
 
 local function GetListWidth()
@@ -379,6 +386,15 @@ local function CreateButtonsPage()
         FixPlace()
         ns.Buttons.SetOrder(keys)
     end)
+    -- A list that changed during a drag (see UpdateButtonsPage) is filled again once it ends,
+    -- also when the drag was let go of outside the list.
+    dragBehavior:SetNotifyDragStart(function(_, isDragging)
+        if not isDragging and page.isStale then
+            page.isStale = false
+            C_Timer.After(0, Settings.Update)
+        end
+    end)
+    page.dragBehavior = dragBehavior
 
     -- Under the list: which buttons it has (also in Blizzard's Options), and the sort button on
     -- the right.
@@ -390,33 +406,29 @@ local function CreateButtonsPage()
         FixPlace()
         ns.Buttons.ResetOrder()
     end)
+    -- Each under the one before, or under its label when that wraps (in longer languages).
     page.options = {}
-    local previous
+    local optionsHeight = 0
     for index, option in ipairs(BUTTON_OPTIONS) do
         local check = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
         check:SetSize(24, 24)
-        if previous then
-            check:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -2)
-        else
-            check:SetPoint("TOPLEFT", page.scrollBox, "BOTTOMLEFT", 0, -10)
-        end
+        check:SetPoint("TOPLEFT", page.scrollBox, "BOTTOMLEFT", 0, -10 - optionsHeight)
         check.label = check:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        check.label:SetPoint("LEFT", check, "RIGHT", 4, 0)
+        check.label:SetPoint("TOPLEFT", check, "TOPRIGHT", 4, -5)
         check.label:SetWidth(GetListWidth() - SORT_WIDTH - COLUMN_GAP - 28)
         check.label:SetJustifyH("LEFT")
         check.label:SetText(L[option[2]])
+        optionsHeight = optionsHeight + math.max(24, check.label:GetStringHeight() + 10) + 2
         check.key = option[1]
         check:SetScript("OnClick", function(self)
             FixPlace()
             ns.db[self.key] = self:GetChecked()
+            -- The addons' own minimap buttons follow (Broker and Blizzard listen for changes).
             ns.Buttons.NotifyChanged()
-            ns.Broker.UpdateMinimapButtons()
-            ns.Blizzard.UpdateMinimapButton()
         end)
         page.options[index] = check
-        previous = check
     end
-    page:SetHeight(page.hint:GetStringHeight() + 6 + LIST_HEIGHT + 10 + #BUTTON_OPTIONS * 26)
+    page:SetHeight(page.hint:GetStringHeight() + 6 + LIST_HEIGHT + 10 + optionsHeight)
     page.empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     page.empty:SetPoint("TOP", page.scrollBox, "TOP", 0, -20)
     page.empty:SetText(L["No buttons found yet."])
@@ -425,6 +437,11 @@ end
 
 -- Fills the list with the buttons, in the menu's order, keeping where it's scrolled to.
 local function UpdateButtonsPage(page)
+    -- Not while a row is being dragged: the list would change under it.
+    if page.dragBehavior:GetDragging() then
+        page.isStale = true
+        return
+    end
     local buttons = ns.Buttons.GetCandidates()
     local entries = {}
     for index, button in ipairs(buttons) do
@@ -493,8 +510,13 @@ local function CreatePanel()
     panel.title:SetText(ns.TITLE)
     panel.close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     panel.close:SetPoint("TOPRIGHT", -4, -4)
-    panel.tabs = { CreateTab(L["Launcher"], "launcher"), CreateTab(L["Buttons"], "buttons") }
-    panel.tabs[2]:SetPoint("RIGHT", panel.close, "LEFT", -6, 0)
+    panel.tabs = {
+        CreateTab(L["Launcher"], "launcher"),
+        CreateTab(L["Buttons"], "buttons"),
+        CreateTab(L["Behavior"], "behavior"),
+    }
+    panel.tabs[3]:SetPoint("RIGHT", panel.close, "LEFT", -6, 0)
+    panel.tabs[2]:SetPoint("RIGHT", panel.tabs[3], "LEFT", -4, 0)
     panel.tabs[1]:SetPoint("RIGHT", panel.tabs[2], "LEFT", -4, 0)
     panel.buttonsPage = CreateButtonsPage()
 
@@ -502,9 +524,9 @@ local function CreatePanel()
         lookHeader = CreateHeader(L["Look"]),
         style = CreateStyleRow(),
         scale = CreateSlider(L["Launcher size"], 50, 200, function()
-            return ns.db.launcher.scale
+            return ns.Launcher.GetScalePercent()
         end, function(value)
-            ns.db.launcher.scale = value
+            ns.Launcher.SetScalePercent(value)
         end, "%d%%"),
         borderColor = CreateDropdown(L["Border color"], {
             { L["Gold"], "gold" },
@@ -518,12 +540,16 @@ local function CreatePanel()
         end),
         -- Prisma's logo, only for the guild's members (see IconStack).
         discSymbols = CreateDropdown(L["Symbols"], function()
-            local options = { { L["Dragon, potion, sword"], "adventure" }, { L["Your class"], "class" } }
+            local options = { { L["Dragon, potion, sword"], "adventure" }, { L["Your class and spec"], "class" } }
             if ns.IconStack.IsInPrisma() then
                 options[#options + 1] = { "Prisma", "prisma" }
             end
             return options
         end, function()
+            -- Prisma's logo after leaving the guild shows the default symbols (see IconStack).
+            if ns.db.discSymbols == "prisma" and not ns.IconStack.IsInPrisma() then
+                return "adventure"
+            end
             return ns.db.discSymbols
         end, function(value)
             ns.db.discSymbols = value
@@ -563,10 +589,36 @@ local function CreatePanel()
         end, function(value)
             return value == 0 and L["Auto"] or format("%d", value)
         end),
-        showNames = CreateCheckbox(L["Show addon names"], function()
-            return ns.db.showNames
+        menuLabels = CreateDropdown(L["Show"], {
+            { L["Icons"], "icons" },
+            { L["Icons and names"], "both" },
+            { L["Names only"], "names" },
+        }, function()
+            return ns.db.menuLabels
         end, function(value)
-            ns.db.showNames = value
+            ns.db.menuLabels = value
+        end),
+        alertsHeader = CreateHeader(L["Alerts"]),
+        showAlerts = CreateCheckbox(L["Show a dot when an addon's icon changes"], function()
+            return ns.db.showAlerts
+        end, function(value)
+            ns.db.showAlerts = value
+        end),
+        openingHeader = CreateHeader(L["Opening and closing"]),
+        openOnHover = CreateCheckbox(L["Open on mouseover"], function()
+            return ns.db.openOnHover
+        end, function(value)
+            ns.db.openOnHover = value
+        end),
+        closeOnLeave = CreateCheckbox(L["Close when the mouse leaves"], function()
+            return ns.db.closeOnLeave
+        end, function(value)
+            ns.db.closeOnLeave = value
+        end),
+        closeOnClick = CreateCheckbox(L["Close after clicking a button"], function()
+            return ns.db.closeOnClick
+        end, function(value)
+            ns.db.closeOnClick = value
         end),
         openDirection = CreateDropdown(L["Opens toward"], {
             { L["The middle of the screen"], "AUTO" },
@@ -644,10 +696,10 @@ local function UpdatePanel()
     UpdateTabs()
     local page = panel.buttonsPage
     page:SetShown(currentTab == "buttons")
+    for _, row in pairs(panel.rows) do
+        row:Hide()
+    end
     if currentTab == "buttons" then
-        for _, row in pairs(panel.rows) do
-            row:Hide()
-        end
         page:ClearAllPoints()
         page:SetPoint("TOPLEFT", PADDING, -GetContentTop())
         UpdateButtonsPage(page)
@@ -658,33 +710,68 @@ local function UpdatePanel()
     local rows = panel.rows
     local style = ns.db.style
     local launcher = ns.Launcher.GetStyle()
-    local isArrow = style == "arrow"
-    local hasDiscs = style == "satellite" or style == "circle" or style == "square"
-    local look = {
-        { rows.lookHeader, true },
-        { rows.style, true },
-        { rows.scale, not launcher.alwaysOpen },
-        { rows.borderColor, hasDiscs },
-        { rows.discSymbols, hasDiscs },
-        -- Prisma's logo has its own colours.
-        { rows.discColors, hasDiscs and not (ns.db.discSymbols == "prisma" and ns.IconStack.IsInPrisma()) },
-        { rows.replaceCompassArrow, isArrow },
-        { rows.gap, isArrow and not ns.Compass.IsReplaced() },
-    }
-    local menu = {
-        { rows.menuHeader, true },
-        { rows.buttonSize, true },
-        { rows.menuRows, true },
-        { rows.showNames, true },
+    local columns
+    if currentTab == "behavior" then
+        -- The Always open style's menu doesn't open or close.
+        local canClose = not launcher.alwaysOpen
         -- Docked on an edge, the circle and square open away from it.
-        { rows.openDirection, (style == "circle" or style == "square") and not ns.Launcher.IsDocked(style) },
-        { rows.positionHeader, launcher.isMovable },
-        { rows.locked, launcher.isMovable },
-        { rows.reset, launcher.isMovable },
-    }
-    local leftHeight = LayoutColumn(look, PADDING)
-    local rightHeight = LayoutColumn(menu, PADDING + COLUMN_WIDTH + COLUMN_GAP)
-    panel:SetHeight(math.max(leftHeight, rightHeight) - ROW_SPACING + PADDING)
+        local hasDirection = (style == "circle" or style == "square") and not ns.Launcher.IsDocked(style)
+        columns = {
+            {
+                { rows.openingHeader, canClose or hasDirection },
+                { rows.openOnHover, canClose },
+                { rows.closeOnClick, canClose },
+                { rows.closeOnLeave, canClose },
+                { rows.openDirection, hasDirection },
+            },
+            {
+                -- A dot needs a launcher to sit on.
+                { rows.alertsHeader, canClose },
+                { rows.showAlerts, canClose },
+                { rows.positionHeader, launcher.isMovable },
+                { rows.locked, launcher.isMovable },
+                { rows.reset, launcher.isMovable },
+            },
+        }
+    else
+        local isArrow = style == "arrow"
+        local hasDiscs = style == "satellite" or style == "circle" or style == "square"
+        columns = {
+            {
+                { rows.lookHeader, true },
+                { rows.style, true },
+                { rows.scale, not launcher.alwaysOpen },
+                -- The menu's border too, so for every style.
+                { rows.borderColor, true },
+                { rows.discSymbols, hasDiscs },
+                -- Prisma's logo has its own colours.
+                { rows.discColors, hasDiscs and not (ns.db.discSymbols == "prisma" and ns.IconStack.IsInPrisma()) },
+                -- A minimap that isn't round has no whole compass to take the arrow from.
+                { rows.replaceCompassArrow, isArrow and ns.Launcher.IsMinimapRound() },
+                { rows.gap, isArrow and not ns.Compass.IsReplaced() },
+            },
+            {
+                { rows.menuHeader, true },
+                -- Names only have no buttons to size.
+                { rows.buttonSize, ns.db.menuLabels ~= "names" },
+                { rows.menuRows, true },
+                { rows.menuLabels, true },
+            },
+        }
+    end
+    -- Columns with nothing to show for this style are left out; the others move left.
+    local height, left = GetContentTop(), PADDING
+    for _, column in ipairs(columns) do
+        local hasRows = false
+        for _, entry in ipairs(column) do
+            hasRows = hasRows or entry[2]
+        end
+        if hasRows then
+            height = math.max(height, LayoutColumn(column, left))
+            left = left + COLUMN_WIDTH + COLUMN_GAP
+        end
+    end
+    panel:SetHeight(height - ROW_SPACING + PADDING)
     PlacePanel()
 end
 

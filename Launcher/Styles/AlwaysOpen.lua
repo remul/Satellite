@@ -19,6 +19,7 @@ function Style:Show()
         holder:SetFrameStrata(ns.Theme.STRATA)
         holder:SetFrameLevel(10)
         holder:SetMovable(true)
+        holder:SetClampedToScreen(true)
         ns.Launcher.SetupMover(ns.Menu.GetPanel(), Style)
     end
     holder:Show()
@@ -38,6 +39,9 @@ function Style:Refresh()
     else
         holder:SetPoint("CENTER", Minimap, "LEFT", -MINIMAP_GAP, 0)
     end
+    -- While dragged, the whole menu stays on the screen: it's left of the holder, centred on it.
+    local width, height = ns.Menu.GetSize()
+    holder:SetClampRectInsets(-width, 0, height / 2, -height / 2)
     ns.Menu.SetFrameLevel(holder:GetFrameLevel() + 1)
     ns.Menu.Place(holder, holder, "CENTER", 0, 0, "LEFT")
 end
@@ -47,7 +51,6 @@ end
 
 function Style:SetHovered()
 end
-
 
 -- Dragging the menu moves the holder, and the menu with it.
 function Style:OnDragStart()

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- An open spellbook (Arcane). -->
+  <path d="M32,16 C24,10 13,10 5,13 V52 C13,49 24,49 32,55 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><g transform="matrix(-1 0 0 1 64 0)"><path d="M32,16 C24,10 13,10 5,13 V52 C13,49 24,49 32,55 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g><path d="M11,22 C17,20 23,21 27,23 M11,30 C17,28 23,29 27,31 M11,38 C17,36 23,37 27,39 M53,22 C47,20 41,21 37,23 M53,30 C47,28 41,29 37,31 M53,38 C47,36 41,37 37,39" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+</svg>

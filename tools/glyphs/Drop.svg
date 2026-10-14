@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- A drop: blood, poison or water. -->
+  <path d="M32,3 C40,17 51,28 51,40 C51,52 42,60 32,60 C22,60 13,52 13,40 C13,28 24,17 32,3 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M19,40 C19,49 25,55 33,55 C27,52 23,47 23,40 Z" fill="#000000" opacity="0.35"/>
+</svg>

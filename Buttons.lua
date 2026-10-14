@@ -65,7 +65,10 @@ function Buttons.Add(button)
     if not old then
         ns:Debug("Found", button.key)
     end
-    Buttons.NotifyChanged()
+    -- Buttons the minimap scan finds are only listed (see IsInLauncher): nothing to redraw.
+    if button.source ~= "frame" then
+        Buttons.NotifyChanged()
+    end
     return old == nil
 end
 

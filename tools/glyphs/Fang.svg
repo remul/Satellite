@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- A pair of fangs in a jaw (Beast Mastery, Demonology, Feral). -->
+  <path d="M3,14 C14,3 50,3 61,14 C50,11 14,11 3,14 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M8,10 C16,8 26,10 30,14 C28,30 22,44 10,56 C14,40 14,24 8,10 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><g transform="matrix(-1 0 0 1 64 0)"><path d="M8,10 C16,8 26,10 30,14 C28,30 22,44 10,56 C14,40 14,24 8,10 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g><path d="M30,14 C31,20 33,20 34,14 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

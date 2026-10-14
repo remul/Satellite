@@ -3,6 +3,8 @@ local _, ns = ...
 -- The compass arrow style: the minimap's own north compass arrow, turned west, in the place of
 -- the west arrow (taken off the compass, see Compass) or just outside it, with a + beside it. The
 -- menu slides out to the left from under it, and the arrow rides along, just left of the menu.
+-- Without room on the left (the minimap at the screen's left edge), the menu opens right of the
+-- minimap instead, and the arrow stays.
 --
 -- What a style has (the Launcher calls these):
 --   Show(), Hide()          make and show its frames, or hide them
@@ -23,10 +25,9 @@ local COMPASS_HALF_HEIGHT_SHARE = 0.11
 local RING_OUTER_SHARE = 1.03
 -- The arrow is the compass's own north arrow turned west (see Compass.GetNorthArrowArt), just the
 -- part outside the ring (the ring behind its base would go along when it moves), this much bigger,
--- growing out from the ring's edge: in place, its base is on the ring's edge, IN_PLACE_NUDGE units
--- further out. Its tip is this share of the whole art's width in from its left end.
-local ART_SCALE_IN_PLACE, ART_SCALE_BESIDE = 1.25, 1.25
-local IN_PLACE_NUDGE = 0
+-- growing out from the ring's edge: in place, its base is on the ring's edge. Its tip is this share
+-- of the whole art's width in from its left end.
+local ART_SCALE = 1.25
 local ART_TIP_INSET = 0.12
 -- Without a compass, Satellite's own arrow texture: its size in compass arrow half heights, and
 -- how far its shape reaches left and right of its center, as shares of its size (see
@@ -43,8 +44,10 @@ local PLUS_DROP = 2.5
 local MIN_HIT_SIZE = 26
 
 local frame, arrow
--- Where the arrow is: its center while closed, and its tip and right end from its center.
+-- Where the arrow is: its center while closed, and its tip and right end from its center; where
+-- the menu's right end is; and whether it opens right of the minimap (see Refresh).
 local closedX, tipOffset, rightOffset, menuRight = 0, 0, 0, 0
+local isFlipped = false
 
 local function Create()
     -- On the minimap, so it moves, scales and hides with it.
@@ -89,11 +92,11 @@ local function Layout(half)
     local art = ns.Compass.GetNorthArrowArt()
     local width, height, tipX
     if art then
-        local scale = (isInPlace and ART_SCALE_IN_PLACE or ART_SCALE_BESIDE) * ns.Launcher.GetScale()
+        local scale = ART_SCALE * ns.Launcher.GetScale()
         width, height = (art.pivot - art.x0) * scale, (art.y1 - art.y0) * scale
         local rightX
         if isInPlace then
-            rightX = art.pivot - IN_PLACE_NUDGE
+            rightX = art.pivot
         else
             -- Its right end at the compass arrow's tip, less the distance setting.
             rightX = compassTip - ns.db.launcher.gap
@@ -112,7 +115,7 @@ local function Layout(half)
         local size = half * COMPASS_HALF_HEIGHT_SHARE * OWN_SCALE * ns.Launcher.GetScale()
         width, height = size, size
         if isInPlace then
-            tipX = compassTip - IN_PLACE_NUDGE
+            tipX = compassTip
         else
             tipX = compassTip - ns.db.launcher.gap - size * (OWN_LEFT_SHARE + OWN_RIGHT_SHARE)
         end
@@ -135,10 +138,10 @@ end
 -- so it draws over the menu; the arrow over the minimap's compass, as the compass arrow it
 -- replaces was.
 local function UpdateFrameLevels()
-    local strata, level = ns.Blizzard.GetMinimapLayer()
+    local strata, buttonLevel = ns.Blizzard.GetMinimapLayer()
     if strata then
         frame:SetFrameStrata(strata)
-        frame:SetFrameLevel(math.max(1, level - 6))
+        frame:SetFrameLevel(math.max(1, buttonLevel - 6))
     end
     local level = frame:GetFrameLevel()
     ns.Menu.SetFrameLevel(level + 1)
@@ -153,15 +156,29 @@ function Style:Refresh()
     arrow.plus:ClearAllPoints()
     arrow.plus:SetPoint("RIGHT", arrow, "CENTER", tipOffset - 1, -PLUS_DROP)
     UpdateFrameLevels()
-    ns.Menu.Place(frame, frame, "CENTER", menuRight, 0, "LEFT", true)
+    -- Room on the screen for the menu and the arrow left of it, open?
+    local width = ns.Menu.GetSize()
+    local x = frame:GetCenter()
+    local toScreen = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    isFlipped = x ~= nil and (x + menuRight - width - MENU_GAP - 2 * rightOffset) * toScreen < 0
+    if isFlipped then
+        ns.Menu.Place(frame, frame, "CENTER", half * RING_OUTER_SHARE + 2, 0, "RIGHT")
+    else
+        ns.Menu.Place(frame, frame, "CENTER", menuRight, 0, "LEFT", true)
+    end
 end
 
--- The arrow rides along with the menu, just left of it; the + fades.
+-- The arrow rides along with the menu, just left of it (unless it opens on the right); the + fades.
 function Style:OnProgress(progress)
     local width = ns.Menu.GetSize()
-    local openX = menuRight - width - rightOffset - MENU_GAP
+    local openX = isFlipped and closedX or menuRight - width - rightOffset - MENU_GAP
     arrow:SetPoint("CENTER", frame, "CENTER", closedX + (openX - closedX) * progress, 0)
     arrow.plus:SetAlpha(1 - math.min(1, progress * 3))
+end
+
+-- The alert dot (see Alert): above the arrow.
+function Style:GetAlertPoint()
+    return arrow, "TOP", 0, 0
 end
 
 function Style:SetHovered(isHovered)

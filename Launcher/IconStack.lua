@@ -1,8 +1,8 @@
 local _, ns = ...
 
 -- A small stack of three coloured discs, overlapping, standing for the addon buttons inside: what
--- the minimap button, circle and square show. Each has a simple glyph (a dragon, a potion, a
--- sword, or one for the player's class) instead of the addons' own icons, so the launcher stays
+-- the minimap button, circle and square show. Each has a simple glyph (a dragon, a potion and a
+-- sword, or the player's class and spec) instead of the addons' own icons, so the launcher stays
 -- quiet; coloured, silver, gold, bronze or in the class colour. Members of the guild Prisma can
 -- show its logo instead. Spread, the discs move apart and grow a
 -- little (while hovered or open). Two arrangements: a "cluster" that fits in a circle (one disc
@@ -13,24 +13,28 @@ ns.IconStack = IconStack
 local Theme = ns.Theme
 
 -- The discs' glyphs (see tools/render_glyphs.sh), this share of a disc's size: as set
--- (ns.db.discSymbols), a dragon, a potion and a sword, or the player's class's glyph on all three.
+-- (ns.db.discSymbols), a dragon, a potion and a sword, or the player's class and spec: the class's
+-- glyph on the disc that stands out (CLASS_DISC), and two for the spec (by its index in the class)
+-- on the others. Without a spec, the class's glyph on all three.
 local GLYPH_SHARE = 0.74
 local ADVENTURE_GLYPHS = { "Dragon", "Potion", "Sword" }
 local CLASS_GLYPHS = {
-    WARRIOR = "Axe",
-    PALADIN = "Hammer",
-    HUNTER = "Bow",
-    ROGUE = "Dagger",
-    PRIEST = "Cross",
-    DEATHKNIGHT = "Skull",
-    SHAMAN = "Lightning",
-    MAGE = "Star",
-    WARLOCK = "Flame",
-    MONK = "Balance",
-    DRUID = "Leaf",
-    DEMONHUNTER = "Horns",
-    EVOKER = "Dragon",
+    WARRIOR = { "Axe", { "Sword", "Banner" }, { "Fist", "Flame" }, { "Shield", "Tower" } },
+    PALADIN = { "Hammer", { "Sun", "Wings" }, { "Shield", "Tower" }, { "Sword", "Crown" } },
+    HUNTER = { "Bow", { "Paw", "Fang" }, { "Arrow", "Crosshair" }, { "Spear", "Bomb" } },
+    ROGUE = { "Dagger", { "Drop", "Skull" }, { "Dice", "Anchor" }, { "Mask", "Moon" } },
+    PRIEST = { "Cross", { "Shield", "Sun" }, { "Wings", "Candle" }, { "Eye", "Skull" } },
+    DEATHKNIGHT = { "Skull", { "Drop", "Sword" }, { "Snowflake", "Sword" }, { "Bones", "Tombstone" } },
+    SHAMAN = { "Lightning", { "Flame", "Mountain" }, { "Fist", "Axe" }, { "Wave", "Drop" } },
+    MAGE = { "Star", { "Book", "Hourglass" }, { "Flame", "Meteor" }, { "Snowflake", "Icicle" } },
+    WARLOCK = { "Flame", { "Skull", "Eye" }, { "Horns", "Fang" }, { "Meteor", "Shard" } },
+    MONK = { "Balance", { "Keg", "Shield" }, { "Lotus", "Cloud" }, { "Fist", "ClawMarks" } },
+    DRUID = { "Leaf", { "Moon", "Star" }, { "ClawMarks", "Fang" }, { "Paw", "Shield" }, { "Tree", "Lotus" } },
+    DEMONHUNTER = { "Horns", { "Wings", "ClawMarks" }, { "Shield", "Flame" }, { "Eye", "Moon" } },
+    EVOKER = { "Dragon", { "Flame", "Wings" }, { "Lotus", "Drop" }, { "Hourglass", "Mountain" } },
 }
+-- The disc that stands out in each arrangement (see ARRANGEMENTS): the top one, or the middle.
+local CLASS_DISC = { cluster = 1, row = 2 }
 
 -- The guild Prisma's logo (Media/Prisma.tga, its crystal on its own), in place of the discs:
 -- offered only to the guild's members ("prisma" in ns.db.discSymbols). Its part of the texture
@@ -51,21 +55,32 @@ local function ShowsLogo()
     return ns.db.discSymbols == "prisma" and IconStack.IsInPrisma()
 end
 
-local function GetGlyph(index)
-    local name = ADVENTURE_GLYPHS[index]
-    if ns.db.discSymbols == "class" then
-        local _, classFile = UnitClass("player")
-        name = CLASS_GLYPHS[classFile] or name
+-- The three discs' glyphs, for arrangement.
+local function GetGlyphs(arrangement)
+    local _, classFile = UnitClass("player")
+    local class = CLASS_GLYPHS[classFile]
+    if ns.db.discSymbols ~= "class" or not class then
+        return ADVENTURE_GLYPHS
     end
-    return ns.MEDIA .. "Glyph" .. name
+    local spec = class[1 + (C_SpecializationInfo.GetSpecialization() or 0)]
+    local glyphs, specGlyph = {}, 1
+    for index = 1, 3 do
+        if index == CLASS_DISC[arrangement] or type(spec) ~= "table" then
+            glyphs[index] = class[1]
+        else
+            glyphs[index] = spec[specGlyph]
+            specGlyph = specGlyph + 1
+        end
+    end
+    return glyphs
 end
 -- The colour settings (ns.db.discColors): the three discs' colours, a little different from each
 -- other so they stand apart where they overlap, and the glyphs' colour. "class" is made from the
 -- player's class colour (see GetClassPalette).
 local PALETTES = {
-    -- Teal, purple and copper (not gold, which the border is), with cream glyphs.
+    -- Muted teal, plum and clay (not gold, which the border is), with cream glyphs.
     colored = {
-        discs = { CreateColor(0.18, 0.56, 0.53, 1), CreateColor(0.42, 0.3, 0.62, 1), CreateColor(0.71, 0.33, 0.23, 1) },
+        discs = { CreateColor(0.33, 0.47, 0.46, 1), CreateColor(0.42, 0.38, 0.5, 1), CreateColor(0.55, 0.41, 0.33, 1) },
         glyph = CreateColor(1, 0.95, 0.83, 1),
     },
     silver = {
@@ -119,7 +134,7 @@ end
 -- A stack drawn on frame, around the middle of anchor (frame if nil); Layout gives its size.
 function IconStack.Create(frame, anchor)
     local stack = {
-        frame = frame, anchor = anchor or frame, arrangement = "cluster", size = 1, x = 0, y = 0,
+        anchor = anchor or frame, arrangement = "cluster", size = 1, x = 0, y = 0,
         spread = 0, discs = {},
     }
     for index = 1, #ADVENTURE_GLYPHS do
@@ -133,7 +148,7 @@ function IconStack.Create(frame, anchor)
         outline:SetVertexColor(Theme.OUTLINE:GetRGBA())
         outline:SetPoint("TOPLEFT", disc, "TOPLEFT", -1.5, 1.5)
         outline:SetPoint("BOTTOMRIGHT", disc, "BOTTOMRIGHT", 1.5, -1.5)
-        local glyph = AddTexture(GetGlyph(index))
+        local glyph = AddTexture(ns.MEDIA .. "Glyph" .. ADVENTURE_GLYPHS[index])
         glyph:SetPoint("CENTER", disc)
         stack.discs[index] = { disc = disc, outline = outline, glyph = glyph }
     end
@@ -185,9 +200,10 @@ function IconStack.Layout(stack, arrangement, buttonSize, x, y)
     local layout = ARRANGEMENTS[arrangement]
     local palette = ns.db.discColors == "class" and GetClassPalette()
         or PALETTES[ns.db.discColors] or PALETTES.colored
+    local glyphs = GetGlyphs(arrangement)
     for index, entry in ipairs(stack.discs) do
         entry.disc:SetVertexColor(palette.discs[index]:GetRGBA())
-        entry.glyph:SetTexture(GetGlyph(index))
+        entry.glyph:SetTexture(ns.MEDIA .. "Glyph" .. glyphs[index])
         entry.glyph:SetVertexColor(palette.glyph:GetRGBA())
         -- Back to front, each disc with its outline under it and its glyph over it.
         local subLevel = (layout.order[index] - 1) * 3

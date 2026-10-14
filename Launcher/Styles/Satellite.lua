@@ -1,7 +1,7 @@
 local _, ns = ...
 
--- The minimap button style (the default): a round button on the minimap's ring, where Blizzard
--- puts its own buttons (like the expansion button), with a stack of coloured discs and a gold
+-- The minimap button style (the default): a round button on the minimap's ring (or its side, on a
+-- square minimap), where Blizzard puts its own buttons (like the expansion button), with a stack of coloured discs and a gold
 -- chevron (see StackButton). Click it and the menu slides out beside it, away from the minimap;
 -- drag it around the ring (when unlocked, or with Shift).
 local Theme = ns.Theme
@@ -11,7 +11,7 @@ ns.Styles.satellite = Style
 local SIZE = 40
 -- The default place, in degrees round from east (counterclockwise): the ring's top left, clear
 -- of Blizzard's buttons. Its center sits this far from the minimap's center, as a share of the
--- minimap's half width: on the ring.
+-- minimap's half size: on the ring (see Launcher.GetMinimapEdgePoint).
 local DEFAULT_DEGREES = 140
 local RING_SHARE = 1.02
 -- Space between the chevron and the menu.
@@ -87,17 +87,21 @@ local function GetMenuDirection()
 end
 
 function Style:Refresh()
-    local radians = math.rad(GetDegrees())
-    local distance = Minimap:GetWidth() / 2 * RING_SHARE
     local size = GetSize()
     button:SetSize(size, size)
     button:ClearAllPoints()
-    button:SetPoint("CENTER", Minimap, "CENTER", math.cos(radians) * distance, math.sin(radians) * distance)
+    button:SetPoint("CENTER", Minimap, "CENTER", ns.Launcher.GetMinimapEdgePoint(GetDegrees(), RING_SHARE))
     UpdateFrameLevels()
     local direction = GetMenuDirection()
     opener:Layout(direction, "cluster", size)
     local reach = opener:GetMenuReach() + MENU_GAP
     ns.Menu.Place(frame, button, "CENTER", direction == "LEFT" and -reach or reach, 0, direction)
+end
+
+-- The alert dot (see Alert): on the ring at the top right.
+function Style:GetAlertPoint()
+    local offset = GetSize() * 0.33
+    return button, "CENTER", offset, offset
 end
 
 function Style:OnProgress(progress)
@@ -108,8 +112,7 @@ function Style:SetHovered(isHovered)
     opener:SetHovered(isHovered)
 end
 
-
--- While dragged, it goes round the ring after the cursor.
+-- While dragged, it goes round the ring (or the square's sides) after the cursor.
 local function FollowCursor()
     local scale = Minimap:GetEffectiveScale()
     local x, y = GetCursorPosition()

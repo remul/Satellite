@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- A shield (the tanks, Discipline). -->
+  <path d="M32,4 C40,9 48,10 55,10 C55,35 46,51 32,60 C18,51 9,35 9,10 C16,10 24,9 32,4 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M32,10 C38,13 44,15 50,15 C50,34 43,46 32,54 Z" fill="#000000" opacity="0.3"/>
+</svg>

@@ -13,7 +13,6 @@ Theme.PANEL_BORDER = ns.MEDIA .. "PanelBorder"
 Theme.BAR_FILL = ns.MEDIA .. "BarFill"
 Theme.BAR_BORDER = ns.MEDIA .. "BarBorder"
 Theme.DISC = ns.MEDIA .. "Disc"
-Theme.RING = ns.MEDIA .. "Ring"
 Theme.TRIANGLE = ns.MEDIA .. "Triangle"
 -- Corner radius of the panel and bar textures, their slice margins.
 Theme.PANEL_RADIUS = 16
@@ -115,8 +114,11 @@ function Theme.AddRoundBox(frame)
     return fill, border
 end
 
+-- Colours a box (the menu, the circle and square) for hovered or not: its border in the border
+-- colour (see GetAccentColors).
 function Theme.SetBoxHovered(fill, border, isHovered)
+    local color, hoverColor = Theme.GetAccentColors()
     fill:SetVertexColor((isHovered and Theme.FILL_HOVER or Theme.FILL):GetRGBA())
-    border:SetVertexColor((isHovered and Theme.SILVER_HOVER or Theme.SILVER):GetRGBA())
+    border:SetVertexColor((isHovered and hoverColor or color):GetRGBA())
 end
 

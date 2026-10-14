@@ -30,6 +30,8 @@ local function Update()
         return
     end
     if IsAvailable(frame) then
+        -- Its art can change with nothing else (e.g. another covenant): drawn again either way.
+        ns.LauncherButton.RefreshIcon(KEY)
         ns.Buttons.Add({
             key = KEY,
             source = "blizzard",
@@ -38,6 +40,7 @@ local function Update()
             description = frame.description,
             frame = frame,
         })
+        ns.Alert.Check(KEY)
     else
         ns.Buttons.Remove(KEY)
     end

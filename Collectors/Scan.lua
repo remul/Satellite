@@ -3,7 +3,8 @@ local addonName, ns = ...
 -- Finds minimap buttons that addons make by hand, without LibDataBroker: frames on the minimap
 -- that look like a button. The minimap also holds Blizzard's own frames and, with addons like
 -- TomTom, HandyNotes or GatherMate, hundreds of map pins; the checks below keep those out. A
--- frame is only listed here; nothing is moved yet.
+-- frame is only listed here; nothing is moved yet. So it only runs when asked (/satellite list
+-- and /satellite scan), not in the background.
 local Scan = {}
 ns.Scan = Scan
 
@@ -78,10 +79,10 @@ local function GetLabel(name)
     if addon and addon ~= addonName then
         local _, title = C_AddOns.GetAddOnInfo(addon)
         if title then
-            return strtrim(C_StringUtil.StripHyperlinks(title)), addon
+            return strtrim(C_StringUtil.StripHyperlinks(title))
         end
     end
-    return name, addon
+    return name
 end
 
 local stats = { checked = 0, skipped = 0, found = 0, milliseconds = 0 }
@@ -109,13 +110,12 @@ local function ScanChildren(parent)
             elseif LooksLikeButton(frame) then
                 local key = "frame:" .. name
                 if not ns.Buttons.Get(key) then
-                    local label, addon = GetLabel(name)
+                    local label = GetLabel(name)
                     ns.Buttons.Add({
                         key = key,
                         source = "frame",
                         name = name,
                         label = label,
-                        addon = addon,
                         frame = frame,
                     })
                 end
@@ -139,33 +139,6 @@ function Scan.Run()
             stats.checked, stats.skipped, stats.found, stats.milliseconds))
     end
     return stats
-end
-
--- How many frames the minimap had at the last scan; a new scan only runs when that changes.
-local lastChildCount = -1
-
-local function ScanIfChanged()
-    local count = Minimap:GetNumChildren() + (MinimapBackdrop and MinimapBackdrop:GetNumChildren() or 0)
-    if count ~= lastChildCount then
-        lastChildCount = count
-        Scan.Run()
-    end
-end
-
--- How often to look for new frames: addons that load later, or make their button late.
-local CHECK_INTERVAL = 5
-
--- Called once ns.db is loaded. The first scan waits until every addon has had time to make its
--- button after login.
-function Scan:Setup()
-    ns:RegisterEvent("PLAYER_ENTERING_WORLD", function(isInitialLogin, isReloadingUi)
-        if isInitialLogin or isReloadingUi then
-            C_Timer.After(2, function()
-                ScanIfChanged()
-                C_Timer.NewTicker(CHECK_INTERVAL, ScanIfChanged)
-            end)
-        end
-    end)
 end
 
 -- Debug command: scans now and prints how long it took.

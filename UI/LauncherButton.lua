@@ -17,6 +17,12 @@ local QUESTION_MARK = 134400
 local BORDER_SCALE, BACKGROUND_SCALE, ICON_SCALE = 50 / 31, 24 / 31, 18 / 31
 -- Icons are cropped a little, as LibDBIcon does, to hide their own square edge.
 local ICON_CROP = 0.05
+-- Showing names only: the space before the name, and the row's colour while hovered.
+local NAME_INSET = 6
+local ROW_HIGHLIGHT = CreateColor(1, 0.82, 0.3, 0.12)
+-- The dot on a button whose icon changed (see Alert): its size and colour.
+local ALERT_SIZE = 7
+local ALERT_COLOR = CreateColor(0.95, 0.27, 0.2, 1)
 
 local APPEAR_TIME = 0.22
 local DISAPPEAR_TIME = 0.12
@@ -50,8 +56,45 @@ function LauncherButton.SetIconTexture(icon, button)
     icon:SetTexCoord(left + cropX, right - cropX, top + cropY, bottom - cropY)
 end
 
+-- Shows or hides the dot on the menu's button with key (if it has one).
+function LauncherButton.SetAlerted(key, isShown)
+    local self = frames[key]
+    if self then
+        self.alertOutline:SetShown(isShown)
+        self.alertDot:SetShown(isShown)
+    end
+end
+
+function LauncherButton.ClearAlerts()
+    for key in pairs(frames) do
+        LauncherButton.SetAlerted(key, false)
+    end
+end
+
+-- What button's icon looks like now, as a string: the same string for the same look (see Alert).
+function LauncherButton.GetIconLook(button)
+    if button.source == "ldb" then
+        local dataObject = button.dataObject
+        return format("%s %s %s %s", tostring(dataObject.icon), tostring(dataObject.iconR),
+            tostring(dataObject.iconG), tostring(dataObject.iconB))
+    elseif button.source == "comp" then
+        return tostring(button.entry.icon)
+    elseif button.source == "blizzard" then
+        return tostring(ns.Blizzard.GetIcon(button))
+    end
+    return ""
+end
+
 local function SetIcon(self)
     LauncherButton.SetIconTexture(self.icon, self.button)
+end
+
+-- Draws the icon again for the menu's button with key, if it has one (its art changed).
+function LauncherButton.RefreshIcon(key)
+    local self = frames[key]
+    if self then
+        SetIcon(self)
+    end
 end
 
 local function ShowSimpleTooltip(self, extraLine)
@@ -112,6 +155,14 @@ local function OnClick(self, mouseButton)
     elseif button.source == "blizzard" then
         ns.Blizzard.Click(button)
     end
+    -- Most clicks open something, and the minimap can come back (a setting). Not on right-click:
+    -- addons often open a menu there, attached to this button. Nor while the settings are open.
+    if mouseButton == "LeftButton" and ns.db.closeOnClick and not ns.Settings.IsShown() then
+        if GameTooltip:IsOwned(self) then
+            GameTooltip:Hide()
+        end
+        ns.Menu.Close()
+    end
 end
 
 local function CreateAppearAnimation(self)
@@ -156,12 +207,28 @@ local function CreateFrameFor(parent)
     self.border = self:CreateTexture(nil, "OVERLAY")
     self.border:SetTexture(BORDER_TEXTURE)
     self.border:SetPoint("TOPLEFT")
-    -- The addon's name to the right, when the menu shows names (see SetLabel).
+    -- The addon's name, when the menu shows names (see SetLook), and the row lit up while hovered
+    -- when it shows only names.
     self.label = self:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    self.label:SetPoint("LEFT", self, "RIGHT", 6, 0)
     self.label:SetJustifyH("LEFT")
     self.label:SetWordWrap(false)
     self.label:Hide()
+    self.rowHighlight = self:CreateTexture(nil, "HIGHLIGHT")
+    self.rowHighlight:SetAllPoints()
+    self.rowHighlight:SetColorTexture(ROW_HIGHLIGHT:GetRGBA())
+    -- A dot in the corner while its icon is new since the menu was last opened (see Alert).
+    self.alertOutline = self:CreateTexture(nil, "OVERLAY", nil, 6)
+    self.alertOutline:SetTexture(ns.Theme.DISC)
+    self.alertOutline:SetVertexColor(ns.Theme.OUTLINE:GetRGBA())
+    self.alertOutline:SetSize(ALERT_SIZE + 3, ALERT_SIZE + 3)
+    self.alertOutline:SetPoint("CENTER", self, "TOPRIGHT", -3, -3)
+    self.alertDot = self:CreateTexture(nil, "OVERLAY", nil, 7)
+    self.alertDot:SetTexture(ns.Theme.DISC)
+    self.alertDot:SetVertexColor(ALERT_COLOR:GetRGBA())
+    self.alertDot:SetSize(ALERT_SIZE, ALERT_SIZE)
+    self.alertDot:SetPoint("CENTER", self.alertOutline)
+    self.alertOutline:Hide()
+    self.alertDot:Hide()
 
     self:SetScript("OnEnter", OnEnter)
     self:SetScript("OnLeave", OnLeave)
@@ -199,24 +266,36 @@ end
 -- minimap button's border and background.
 local FRAMED_ART_SCALE = 1.3
 
-function LauncherButton.SetSize(self, size)
-    self:SetSize(size, size)
+-- Draws the frame for what the menu shows (mode: "icons", "both" or "names"): a minimap button
+-- size wide; with "both", the addon's name beside it, width wide (cut off with "..." if it doesn't
+-- fit; clicks on it count as clicks on the button); with "names", just the name, as a row width
+-- wide and size high.
+function LauncherButton.SetLook(self, mode, size, width)
+    local isNameOnly = mode == "names"
     local hasOwnFrame = self.button.source == "blizzard"
-    self.border:SetShown(not hasOwnFrame)
-    self.background:SetShown(not hasOwnFrame)
+    self.border:SetShown(not hasOwnFrame and not isNameOnly)
+    self.background:SetShown(not hasOwnFrame and not isNameOnly)
+    self.icon:SetShown(not isNameOnly)
+    self:GetHighlightTexture():SetAlpha(isNameOnly and 0 or 1)
+    self.rowHighlight:SetShown(isNameOnly)
+    self.label:SetShown(mode ~= "icons")
+    self.label:SetText(self.button.label)
+    self.label:ClearAllPoints()
+    if isNameOnly then
+        self:SetSize(width, size)
+        self.label:SetPoint("LEFT", NAME_INSET, 0)
+        self.label:SetWidth(width - 2 * NAME_INSET)
+        self:SetHitRectInsets(0, 0, 0, 0)
+        return
+    end
+    self:SetSize(size, size)
     self.border:SetSize(size * BORDER_SCALE, size * BORDER_SCALE)
     self.background:SetSize(size * BACKGROUND_SCALE, size * BACKGROUND_SCALE)
     local iconSize = size * (hasOwnFrame and FRAMED_ART_SCALE or ICON_SCALE)
     self.icon:SetSize(iconSize, iconSize)
-end
-
--- Shows the addon's name to the right of the button, width wide (it's cut off with "..." if it
--- doesn't fit), or hides it; clicks on the name count as clicks on the button.
-function LauncherButton.SetLabel(self, isShown, width)
-    self.label:SetShown(isShown)
-    self.label:SetText(self.button.label)
+    self.label:SetPoint("LEFT", self, "RIGHT", 6, 0)
     self.label:SetWidth(width)
-    self:SetHitRectInsets(0, isShown and -(width + 6) or 0, 0, 0)
+    self:SetHitRectInsets(0, mode == "both" and -(width + 6) or 0, 0, 0)
 end
 
 -- Shows the frame with its pop-in animation, after delay seconds.
@@ -245,19 +324,20 @@ function LauncherButton.ShowNow(self)
 end
 
 -- Addons change their icon as things happen (e.g. BugSack when there's a new error).
-local ICON_ATTRIBUTES = { icon = true, iconCoords = true, iconR = true, iconG = true, iconB = true }
+local ICON_ATTRIBUTES = { "icon", "iconCoords", "iconR", "iconG", "iconB" }
 
 function LauncherButton.Setup()
-    -- CallbackHandler's RegisterCallback takes the owner first; the IDE reads it as a method.
-    ---@diagnostic disable-next-line: param-type-mismatch
-    -- Data sources change their text often (some every frame), so other attributes return early.
-    LDB.RegisterCallback(LauncherButton, "LibDataBroker_AttributeChanged", function(_, name, key)
-        if not ICON_ATTRIBUTES[key] then
-            return
-        end
+    local function OnIconChanged(_, name)
         local self = frames["ldb:" .. name]
         if self then
             SetIcon(self)
         end
-    end)
+        ns.Alert.Check("ldb:" .. name)
+    end
+    -- Only these attributes: data sources change their text often, some every frame.
+    for _, key in ipairs(ICON_ATTRIBUTES) do
+        -- CallbackHandler's RegisterCallback takes the owner first; the IDE reads it as a method.
+        ---@diagnostic disable-next-line: param-type-mismatch
+        LDB.RegisterCallback(LauncherButton, "LibDataBroker_AttributeChanged__" .. key, OnIconChanged)
+    end
 end

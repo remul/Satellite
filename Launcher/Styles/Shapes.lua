@@ -85,8 +85,6 @@ local function CreateStyle(key)
         DRAWERS[key](shape)
         opener = ns.StackButton.Create(button, shape, function(isLit)
             Theme.SetBoxHovered(shape.fill, shape.border, isLit)
-            local color, hoverColor = Theme.GetAccentColors()
-            shape.border:SetVertexColor((isLit and hoverColor or color):GetRGBA())
         end)
         ns.Launcher.SetupOpener(button)
     end
@@ -146,9 +144,9 @@ local function CreateStyle(key)
         elseif position and position.x then
             button:SetPoint("CENTER", UIParent, "BOTTOMLEFT", position.x, position.y)
         else
-            local distance = Minimap:GetWidth() / 2 * DEFAULT_DISTANCE_SHARE + select(1, GetSize(key)) / 2
-            local radians = math.rad(DEFAULT_DEGREES)
-            button:SetPoint("CENTER", Minimap, "CENTER", math.cos(radians) * distance, math.sin(radians) * distance)
+            local x, y = ns.Launcher.GetMinimapEdgePoint(DEFAULT_DEGREES, DEFAULT_DISTANCE_SHARE,
+                select(1, GetSize(key)) / 2)
+            button:SetPoint("CENTER", Minimap, "CENTER", x, y)
         end
         return edge
     end
@@ -157,8 +155,32 @@ local function CreateStyle(key)
         opener:SetProgress(progress)
     end
 
+    -- The edge it's docked on, or nil.
+    local dockedEdge
+
+    -- The alert dot (see Alert): at the top right, on the circle's ring or in the square's corner;
+    -- docked, in the corner on the screen's side.
+    function Style:GetAlertPoint()
+        local width, height = GetSize(key)
+        local x, y = width / 2, height / 2
+        if key == "circle" then
+            x, y = x * 0.66, y * 0.66
+        else
+            x, y = x - 6, y - 6
+        end
+        local out = dockedEdge and EDGES[dockedEdge]
+        if out and out.x ~= 0 then
+            x = -out.x * x
+        end
+        if out and out.y ~= 0 then
+            y = -out.y * y
+        end
+        return shape, "CENTER", x, y
+    end
+
     function Style:Refresh()
         local edge = Place()
+        dockedEdge = edge
         ns.Menu.SetFrameLevel(button:GetFrameLevel() + 1)
         -- Docked: away from the edge; otherwise as set (see openDirection), or toward the middle.
         local setting = ns.db.openDirection
@@ -180,7 +202,6 @@ local function CreateStyle(key)
     function Style:SetHovered(isHovered)
         opener:SetHovered(isHovered)
     end
-
 
     -- While dragged, the button follows the cursor; close to an edge (for the shapes
     -- that dock), it docks there, along it with the cursor, keeping the menu on the screen.
@@ -230,8 +251,9 @@ local function CreateStyle(key)
     function Style:OnDragStart()
         Style.isDragging = true
         local x, y = GetCursor()
-        local centerX, centerY = button:GetCenter()
-        local scale = button:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        -- From the whole shape's middle (past the edge while docked), as FollowCursor places it.
+        local centerX, centerY = shape:GetCenter()
+        local scale = shape:GetEffectiveScale() / UIParent:GetEffectiveScale()
         grabX, grabY = centerX * scale - x, centerY * scale - y
         button:SetScript("OnUpdate", FollowCursor)
     end

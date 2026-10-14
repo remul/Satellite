@@ -7,8 +7,8 @@ local _, ns = ...
 -- upper half from just above, its lower half from just below, each turned a little to fit. The
 -- ring's shading changes slowly around it, so copies from close by match their neighbours.
 --
--- Only when the minimap doesn't rotate: then the compass turns with the map, and the original
--- stays.
+-- Only on a round minimap that doesn't rotate: a rotating compass turns with the map, and a square
+-- minimap has no whole ring. Otherwise the original stays.
 local Compass = {}
 ns.Compass = Compass
 
@@ -30,7 +30,7 @@ local NORTH_HALF_WIDTH_SHARE = 0.21
 local RING_PIVOT_SHARE = 0.99
 
 local holder -- frame for the pieces, over the compass
--- The compass's own colour and alpha, read once before it's hidden: hiding it (SetAlpha) changes
+-- The compass's own colour and alpha, read just before it's hidden: hiding it (SetAlpha) changes
 -- what GetVertexColor returns, so reading them later would copy the hidden state onto the pieces.
 local originalColor, originalAlpha
 local pieces = {}
@@ -155,19 +155,20 @@ local function Build(compass)
     return true
 end
 
+-- Not on a minimap that isn't round all the way: its compass isn't a whole ring to redraw.
 local function CanReplace()
     return ns.db.style == "arrow" and ns.db.replaceCompassArrow and MinimapCompassTexture ~= nil
-        and not GetCVarBool("rotateMinimap")
+        and not GetCVarBool("rotateMinimap") and ns.Launcher.IsMinimapRound()
 end
 
--- The compass's own north arrow, turned to point west, to draw as the launcher's arrow: its file
--- and texture coordinates (the eight-value form, turning it), and where it would be pointing west
--- in the minimap's units around its center: { file, coords, outerCoords, x0, x1, y0, y1, pivot,
--- color } (pivot: the ring's outer edge, see RING_PIVOT_SHARE; outerCoords: just the part outside
--- it, without the ring). Nil without a compass.
+-- The compass's own north arrow, turned to point west, to draw as the launcher's arrow: its file,
+-- the texture coordinates of the part outside the ring (the eight-value form, turning it), and
+-- where it would be pointing west in the minimap's units around its center: { file, outerCoords,
+-- x0, x1, y0, y1, pivot, color } (pivot: the ring's outer edge, see RING_PIVOT_SHARE). Nil
+-- without a compass.
 function Compass.GetNorthArrowArt()
     local compass = MinimapCompassTexture
-    local m = compass and originalColor and Measure(compass)
+    local m = compass and Measure(compass)
     if not m then
         return nil
     end
@@ -176,7 +177,7 @@ function Compass.GetNorthArrowArt()
     local left, right = m.centerX - half * NORTH_HALF_WIDTH_SHARE, m.centerX + half * NORTH_HALF_WIDTH_SHARE
     local top = math.max(0, m.centerY - half * NORTH_OUTER_SHARE)
     local bottom = m.centerY - half * NORTH_INNER_SHARE
-    local uLeft, uRight, vTop, vBottom = m.U(left), m.U(right), m.V(top), m.V(bottom)
+    local uLeft, uRight, vTop = m.U(left), m.U(right), m.V(top)
     local vPivot = m.V(m.centerY - half * RING_PIVOT_SHARE)
     local depth, width = (bottom - top) / m.scale, (right - left) / m.scale
     local inner = half / m.scale * NORTH_INNER_SHARE
@@ -184,10 +185,10 @@ function Compass.GetNorthArrowArt()
     return {
         file = m.file,
         -- Turned a quarter counterclockwise: the tip (the top) to the left.
-        coords = { uRight, vTop, uLeft, vTop, uRight, vBottom, uLeft, vBottom },
         outerCoords = { uRight, vTop, uLeft, vTop, uRight, vPivot, uLeft, vPivot },
         x0 = -inner - depth, x1 = -inner, y0 = -width / 2, y1 = width / 2, pivot = pivot,
-        color = originalColor,
+        -- While the compass is hidden, the colour it had.
+        color = isReplaced and originalColor or { compass:GetVertexColor() },
     }
 end
 
@@ -208,9 +209,20 @@ function Compass.Update()
     if not compass or not holder then
         return
     end
-    isReplaced = CanReplace() and Build(compass)
+    local wasReplaced, canReplace = isReplaced, CanReplace()
+    if canReplace and not wasReplaced then
+        originalColor = { compass:GetVertexColor() }
+        originalAlpha = compass:GetAlpha()
+    end
+    isReplaced = canReplace and Build(compass)
     holder:SetShown(isReplaced and compass:IsShown())
-    compass:SetAlpha(isReplaced and 0 or originalAlpha)
+    -- Its alpha only changes when it's taken off or put back, so other addons (minimap skins)
+    -- can set it otherwise.
+    if isReplaced then
+        compass:SetAlpha(0)
+    elseif wasReplaced then
+        compass:SetAlpha(originalAlpha)
+    end
 end
 
 -- Called once ns.db is loaded; the pieces are made at login, once the minimap has its size.
@@ -219,8 +231,6 @@ function Compass:Setup()
     if not compass then
         return
     end
-    originalColor = { compass:GetVertexColor() }
-    originalAlpha = compass:GetAlpha()
     holder = CreateFrame("Frame", nil, compass:GetParent())
     holder:SetAllPoints(compass)
     holder:Hide()

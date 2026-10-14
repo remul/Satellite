@@ -88,7 +88,6 @@ local function Sync()
                 source = "comp",
                 name = tocAddon or label,
                 label = label ~= "" and label or key,
-                addon = tocAddon,
                 entry = entry,
             })
         end

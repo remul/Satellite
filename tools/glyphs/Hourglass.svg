@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- An hourglass (Arcane, Augmentation). -->
+  <path d="M17,10 H47 C47,24 36,27 36,32 C36,37 47,40 47,54 H17 C17,40 28,37 28,32 C28,27 17,24 17,10 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M23,20 H41 C39,25 34,27 32,30 C30,27 25,25 23,20 Z" fill="#000000" opacity="0.45"/><path d="M20,51 C23,43 29,40 32,40 C35,40 41,43 44,51 Z" fill="#000000" opacity="0.45"/><path d="M11,4 H53 V11 H11 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M11,53 H53 V60 H11 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
