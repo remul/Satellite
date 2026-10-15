@@ -8,6 +8,8 @@ ignore:
   - tools
   # Planning notes for development.
   - ROADMAP.md
+  # Test buttons and pins for development (its TOC line is between #@debug@ markers).
+  - Debug
   # Logo sources for GitHub and CurseForge; only Media/Icon.tga is used in game.
   - Media/Emblem.svg
   - Media/Emblem.png
