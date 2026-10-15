@@ -11,6 +11,10 @@ ns.Settings = Settings
 
 -- The symbols anyone can choose (see IconStack); Prisma's logo only in the guild.
 local CHOOSABLE_SYMBOLS = { satellite = true, classImage = true, specImage = true, heroImage = true }
+-- The images' names in the dropdown (see IconStack.GetImageChoices).
+local IMAGE_NAMES = {
+    classImage = "Your class image", specImage = "Your spec image", heroImage = "Your hero talent image",
+}
 
 local Theme = ns.Theme
 
@@ -639,12 +643,11 @@ local function CreatePanel()
         end),
         -- Satellite's logo, and Prisma's only for the guild's members (see IconStack).
         discSymbols = CreateDropdown(L["Symbol"], function()
-            local options = {
-                { L["Satellite logo"], "satellite" },
-                { L["Your class image"], "classImage" },
-                { L["Your spec image"], "specImage" },
-                { L["Your hero talent image"], "heroImage" },
-            }
+            -- The images this game has (no hero talents in WoW Forever, see Client).
+            local options = { { L["Satellite logo"], "satellite" } }
+            for _, choice in ipairs(ns.IconStack.GetImageChoices()) do
+                options[#options + 1] = { L[IMAGE_NAMES[choice]], choice }
+            end
             if ns.IconStack.IsInPrisma() then
                 options[#options + 1] = { "Prisma", "prisma" }
             end
@@ -656,7 +659,7 @@ local function CreatePanel()
         end, function()
             -- Prisma's logo after leaving the guild, or a choice that's gone, shows Satellite's
             -- (see IconStack).
-            local symbols = ns.db.discSymbols
+            local symbols = ns.IconStack.GetShownChoice(ns.db.discSymbols)
             if CHOOSABLE_SYMBOLS[symbols] or (symbols == "prisma" and ns.IconStack.IsInPrisma()) then
                 return symbols
             end

@@ -29,6 +29,17 @@ Shipped, but so far only checked in code and with simulations outside the game:
   `Launcher/Styles/Arrow.lua`) come from one screenshot; check them at other minimap sizes, and
   `EAST_NUDGE` on the east side, in place of the east arrow and beside it.
 
+## WoW Forever
+
+Satellite runs in WoW Forever's beta too (interface 16001, already in the TOC). What a client can
+do is in `Compat.lua` (`ns.Client`), found by looking for its functions; the rest asks it for
+features, never for a version.
+
+- Check in Forever: which image symbols it offers (no hero talents; specs?), the compass arrow on
+  its minimap art (`COMPASS_TIP_SHARE`, `COMPASS_HALF_HEIGHT_SHARE`), the settings panel and the
+  Buttons list, and the addons there.
+- Then release with 16001 in the TOC, so CurseForge lists Satellite for Forever.
+
 ## Buttons
 
 - Blizzard's expansion button: while its original is hidden, its pulse and alerts (renown, new

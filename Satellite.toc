@@ -1,8 +1,8 @@
-## Interface: 120105
+## Interface: 120105, 16001
 ## Title: Satellite
 ## Notes: Gathers the minimap buttons of your addons into one launcher.
 ## Author: Remul
-## Version: 0.6.0
+## Version: 0.7.0
 ## SavedVariables: SatelliteDB
 ## SavedVariablesPerCharacter: SatelliteCharacterDB
 ## IconTexture: Interface\AddOns\Satellite\Media\Icon
@@ -34,6 +34,7 @@ Locales\ptBR.lua
 Locales\zhCN.lua
 Locales\zhTW.lua
 Locales\koKR.lua
+Compat.lua
 Core.lua
 Buttons.lua
 Collectors\Broker.lua

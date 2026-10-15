@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- **WoW Forever**: Satellite runs there too. The symbol settings offer only what the game has
+  (no hero talents in Forever).
+- The test code is no longer in the download.
+
 ## 0.6.0
 
 - **Rename buttons**: right-click a name in the Buttons tab. The menu's names get as much room as

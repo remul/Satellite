@@ -481,15 +481,22 @@ function Launcher:Setup()
         ns:RegisterEvent("GUILD_ROSTER_UPDATE", OnGuildChanged)
         -- The class symbols and images change with the spec, and the hero talent image with the
         -- talents (see IconStack); talents change often, the image seldom.
-        ns:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", Launcher.Refresh)
-        local symbolKey = ns.IconStack.GetSymbolKey()
-        ns:RegisterEvent("TRAIT_CONFIG_UPDATED", function()
-            local key = ns.IconStack.GetSymbolKey()
-            if key ~= symbolKey then
-                symbolKey = key
-                Launcher.Refresh()
-            end
-        end)
+        -- Only where the game has them (see Client).
+        if ns.Client.HasEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED") then
+            ns:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", Launcher.Refresh)
+        end
+        -- Talents may not be known yet at login (see Client.HasHeroTalents); the image only
+        -- redraws when it changed.
+        if ns.Client.HasEvent("TRAIT_CONFIG_UPDATED") then
+            local symbolKey = ns.IconStack.GetSymbolKey()
+            ns:RegisterEvent("TRAIT_CONFIG_UPDATED", function()
+                local key = ns.IconStack.GetSymbolKey()
+                if key ~= symbolKey then
+                    symbolKey = key
+                    Launcher.Refresh()
+                end
+            end)
+        end
         ns:RegisterEvent("GLOBAL_MOUSE_DOWN", OnGlobalMouseDown)
         Minimap:HookScript("OnSizeChanged", Launcher.Refresh)
         -- Where things fit on the screen changes with the UI scale, the window's size, and the

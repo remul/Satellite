@@ -6,8 +6,8 @@ Satellite gathers the minimap buttons of your addons, and Blizzard's expansion b
 Omnium Folio...), into one launcher, so your minimap stays clear. Open the launcher to reach them
 all in one place.
 
-Satellite is in early development. Click the button with Satellite's logo on your minimap's
-ring to open its menu; hover it, and the logo's buttons orbit.
+Satellite is in early development. It runs in Retail and in WoW Forever. Click the button with
+Satellite's logo on your minimap's ring to open its menu; hover it, and the logo's buttons orbit.
 
 ## Settings
 

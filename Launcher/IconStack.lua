@@ -82,8 +82,11 @@ local function GetClassImage()
     return MakeAtlasImage(GetClassAtlas(classFile), EMBLEM_IMAGE)
 end
 
--- The spec's icon (a file), or nil without a spec (a new character).
+-- The spec's icon (a file), or nil without a spec (a new character, or a game without specs).
 local function GetSpecIcon()
+    if not ns.Client.HasSpecs() then
+        return nil
+    end
     local index = C_SpecializationInfo.GetSpecialization()
     return index and select(4, C_SpecializationInfo.GetSpecializationInfo(index))
 end
@@ -97,8 +100,12 @@ local function GetSpecImage()
     return MakeImage(icon, 0, 1, 0, 1, SPEC_IMAGE)
 end
 
--- The active hero talent tree's emblem (an atlas), or nil below the level for one.
+-- The active hero talent tree's emblem (an atlas), or nil below the level for one (or in a game
+-- without hero talents).
 local function GetHeroAtlas()
+    if not ns.Client.HasHeroTalents() then
+        return nil
+    end
     local subTreeID = C_ClassTalents.GetActiveHeroTalentSpec()
     local configID = C_ClassTalents.GetActiveConfigID()
     local info = subTreeID and configID and C_Traits.GetSubTreeInfo(configID, subTreeID)
@@ -167,6 +174,30 @@ local function GetLogo()
     end
     -- An image the game doesn't have shows Satellite's logo.
     return IMAGES[symbols] and IMAGES[symbols]() or LOGOS.satellite
+end
+
+-- The images the player can choose in this game, in the settings' order (see Client).
+function IconStack.GetImageChoices()
+    local choices = { "classImage" }
+    if ns.Client.HasSpecs() then
+        choices[#choices + 1] = "specImage"
+    end
+    if ns.Client.HasHeroTalents() then
+        choices[#choices + 1] = "heroImage"
+    end
+    return choices
+end
+
+-- The choice the launcher follows: a hero talent or spec image where the game has none falls back
+-- as the launcher does (to the spec's, then the class's), so the settings show what's there.
+function IconStack.GetShownChoice(symbols)
+    if symbols == "heroImage" and not ns.Client.HasHeroTalents() then
+        symbols = "specImage"
+    end
+    if symbols == "specImage" and not ns.Client.HasSpecs() then
+        symbols = "classImage"
+    end
+    return symbols
 end
 
 -- Whether one of the player's images shows, in its colours (ns.db.imageColors).
