@@ -332,6 +332,50 @@ local function ShowAlertToggleTooltip(button)
     GameTooltip:Show()
 end
 
+-- The toggle for a favorite (see Favorites): Blizzard's star (as for favorite pets), filled while
+-- it's one; where the game has no star, a dot, gold while it's one.
+local STAR_ON, STAR_OFF = "auctionhouse-icon-favorite", "auctionhouse-icon-favorite-off"
+local function CreateFavoriteToggle(parent, onClick)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(18, 18)
+    button.star = button:CreateTexture(nil, "ARTWORK")
+    button.star:SetPoint("CENTER")
+    button.hasAtlas = C_Texture.GetAtlasInfo(STAR_ON) ~= nil
+    if button.hasAtlas then
+        button.star:SetSize(14, 14)
+    else
+        button.star:SetTexture(Theme.DISC)
+        button.star:SetSize(8, 8)
+    end
+    button:SetScript("OnClick", onClick)
+    return button
+end
+
+-- Faint while there's no room for more.
+local function SetFavoriteToggleOn(button, isOn, canAdd)
+    button.isOn, button.canAdd = isOn, canAdd
+    if button.hasAtlas then
+        button.star:SetAtlas(isOn and STAR_ON or STAR_OFF)
+    else
+        button.star:SetVertexColor((isOn and Theme.GOLD or Theme.SILVER):GetRGBA())
+    end
+    button.star:SetAlpha((isOn or canAdd) and 1 or 0.35)
+end
+
+local function ShowFavoriteToggleTooltip(button)
+    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+    GameTooltip_SetTitle(GameTooltip, L["Favorite"])
+    GameTooltip_AddNormalLine(GameTooltip, L["Shown beside the launcher, outside the menu, for quick access."])
+    if button.isOn then
+        GameTooltip_AddInstructionLine(GameTooltip, L["Click to take it out of the favorites."])
+    elseif button.canAdd then
+        GameTooltip_AddInstructionLine(GameTooltip, L["Click to make it a favorite."])
+    else
+        GameTooltip_AddErrorLine(GameTooltip, format(L["You can have up to %d favorites."], ns.Buttons.MAX_FAVORITES))
+    end
+    GameTooltip:Show()
+end
+
 -- Renaming a row's button: an edit box in place of its name, made the first time. Enter keeps the
 -- new name, Escape the old one; an empty name gives the button its own back.
 local function StartRename(row)
@@ -366,7 +410,7 @@ end
 
 -- A row of the list (template: SatelliteButtonListRowTemplate, see UI/Templates.xml): the grip, a
 -- checkbox (shown in the menu or not), the icon and name (right-click it to rename the button),
--- the alert dot's toggle, and the arrows.
+-- the favorite's star, the alert dot's toggle, and the arrows.
 local RowMixin = {}
 _G.SatelliteButtonListRowMixin = RowMixin
 
@@ -406,9 +450,19 @@ function RowMixin:OnLoad()
         ShowAlertToggleTooltip(toggle)
     end)
     self.alert:SetPoint("RIGHT", self.up, "LEFT", -4, 0)
+    self.favorite = CreateFavoriteToggle(self, function(toggle)
+        if not toggle.isOn and not toggle.canAdd then
+            return
+        end
+        FixPlace()
+        ns.Buttons.SetFavorite(self.key, not toggle.isOn)
+        SetFavoriteToggleOn(toggle, not toggle.isOn, toggle.canAdd)
+        ShowFavoriteToggleTooltip(toggle)
+    end)
+    self.favorite:SetPoint("RIGHT", self.alert, "LEFT", -2, 0)
     self.name = self:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     self.name:SetPoint("LEFT", self.icon, "RIGHT", 6, 0)
-    self.name:SetPoint("RIGHT", self.alert, "LEFT", -6, 0)
+    self.name:SetPoint("RIGHT", self.favorite, "LEFT", -6, 0)
     self.name:SetJustifyH("LEFT")
     self.name:SetWordWrap(false)
     -- Lights up while hovered, also over its checkbox and arrows.
@@ -417,12 +471,14 @@ function RowMixin:OnLoad()
     end
     self:SetScript("OnEnter", UpdateHighlight)
     self:SetScript("OnLeave", UpdateHighlight)
-    for _, child in ipairs({ self.check, self.alert, self.up, self.down }) do
+    for _, child in ipairs({ self.check, self.favorite, self.alert, self.up, self.down }) do
         child:HookScript("OnEnter", UpdateHighlight)
         child:HookScript("OnLeave", UpdateHighlight)
     end
     self.alert:HookScript("OnEnter", ShowAlertToggleTooltip)
     self.alert:HookScript("OnLeave", GameTooltip_Hide)
+    self.favorite:HookScript("OnEnter", ShowFavoriteToggleTooltip)
+    self.favorite:HookScript("OnLeave", GameTooltip_Hide)
     self:HookScript("OnMouseUp", function(_, mouseButton)
         if mouseButton == "RightButton" then
             StartRename(self)
@@ -430,7 +486,7 @@ function RowMixin:OnLoad()
     end)
 end
 
--- data: { button, index, count }.
+-- data: { button, index, count, canAddFavorite }.
 function RowMixin:Init(data)
     local button = data.button
     self.key = button.key
@@ -449,6 +505,8 @@ function RowMixin:Init(data)
     -- Only where it counts: a button out of the menu has no dot, nor do all of them while alerts
     -- are off.
     self.alert:SetShown(isShown and ns.db.showAlerts)
+    SetFavoriteToggleOn(self.favorite, ns.Buttons.IsFavorite(button.key), data.canAddFavorite)
+    self.favorite:SetShown(isShown)
     SetArrowEnabled(self.up, data.index > 1)
     SetArrowEnabled(self.down, data.index < data.count)
 end
@@ -462,7 +520,8 @@ local function CreateButtonsPage()
     page.hint:SetWidth(GetListWidth())
     page.hint:SetJustifyH("LEFT")
     page.hint:SetText(L["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."]
-        .. " " .. L["Right-click a name to rename it."])
+        .. " " .. L["Right-click a name to rename it."]
+        .. " " .. L["Click a star to make a button a favorite: it shows beside the launcher."])
 
     -- The list, with a thin scroll bar on its right.
     page.scrollBox = CreateFrame("Frame", nil, page, "WowScrollBoxList")
@@ -546,9 +605,10 @@ local function UpdateButtonsPage(page)
         return
     end
     local buttons = ns.Buttons.GetCandidates()
+    local canAddFavorite = #ns.Buttons.GetFavorites() < ns.Buttons.MAX_FAVORITES
     local entries = {}
     for index, button in ipairs(buttons) do
-        entries[index] = { button = button, index = index, count = #buttons }
+        entries[index] = { button = button, index = index, count = #buttons, canAddFavorite = canAddFavorite }
     end
     page.scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
     for _, check in ipairs(page.options) do
@@ -727,6 +787,15 @@ local function CreatePanel()
         end, function(value)
             ns.db.menuRows = value
         end),
+        showFavorites = CreateDropdown(L["Favorites"], {
+            { L["Beside the launcher"], "always" },
+            { L["Beside the launcher on mouseover"], "hover" },
+            { L["In the menu"], "menu" },
+        }, function()
+            return ns.db.showFavorites
+        end, function(value)
+            ns.db.showFavorites = value
+        end),
         menuLabels = CreateDropdown(L["Show"], {
             { L["Icons"], "icons" },
             { L["Icons and names"], "both" },
@@ -903,6 +972,8 @@ local function GetColumns(tab)
                 { rows.buttonShape, ns.db.menuLabels ~= "names" },
                 { rows.menuRows, true },
                 { rows.menuLabels, true },
+                -- The Always open style has no launcher to put them beside.
+                { rows.showFavorites, not launcher.alwaysOpen },
             },
         }
     end

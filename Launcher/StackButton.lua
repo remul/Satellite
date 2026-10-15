@@ -14,9 +14,9 @@ local Theme = ns.Theme
 local CHEVRON_WIDTH, CHEVRON_HEIGHT, CHEVRON_GAP, CHEVRON_NUDGE = 7, 12, 3, 2
 -- Seconds to go from not hovered to hovered.
 local HOVER_TIME = 0.15
--- While hovered, the logo's buttons orbit its middle this fast (radians a second: a turn in 6 seconds);
--- after, they turn back the short way at this speed.
-local ORBIT_SPEED = 2 * math.pi / 6
+-- While hovered, the logo's buttons orbit its middle this fast (radians a second: a turn in 9
+-- seconds, slow enough to stay calm); after, they turn back the short way at this speed.
+local ORBIT_SPEED = 2 * math.pi / 9
 local UNWIND_SPEED = 4
 -- Seconds the pulse (see Pulse) takes.
 local PULSE_TIME = 0.45

@@ -199,6 +199,36 @@ function Buttons.GetLauncherButtons()
     return list
 end
 
+-- Favorites -------------------------------------------------------------------------------------
+-- ns.db.favoriteButtons: [key] = true for the buttons the player made favorites (see Favorites).
+
+-- At most this many, so they fit along the minimap's ring.
+Buttons.MAX_FAVORITES = 4
+
+function Buttons.IsFavorite(key)
+    return ns.db.favoriteButtons[key] == true
+end
+
+-- The favorites the menu has, in the player's order: at most MAX_FAVORITES (a saved favorite of an
+-- addon that's off doesn't count; when it's back, one too many stays in the menu). From
+-- launcherButtons, if given (Buttons.GetLauncherButtons, already made).
+function Buttons.GetFavorites(launcherButtons)
+    local list = {}
+    for _, button in ipairs(launcherButtons or Buttons.GetLauncherButtons()) do
+        if Buttons.IsFavorite(button.key) and #list < Buttons.MAX_FAVORITES then
+            list[#list + 1] = button
+        end
+    end
+    return list
+end
+
+function Buttons.SetFavorite(key, isFavorite)
+    ns.db.favoriteButtons[key] = isFavorite or nil
+    -- Its icon as it is now is its normal, wherever it shows (see Alert).
+    ns.Alert.Forget(key)
+    Buttons.NotifyChanged()
+end
+
 -- Buttons out of the menu until the player ticks them: [key] = true.
 local OUT_OF_MENU = {
     -- Plumber's expansion summary: its own button stays on the minimap (see Handmade), as
@@ -226,13 +256,29 @@ function Buttons.IsHidden(key)
     return isHidden
 end
 
--- Whether the button with key shows the alert dot when its icon changes (see Alert).
+-- Buttons without the alert dot until the player turns it on: boss mods change their icon with
+-- the instance and their modules (BigWigs's button also shows LittleWigs and TinyWigs).
+local QUIET_BY_DEFAULT = {
+    ["ldb:BigWigs"] = true,
+    ["ldb:DBM"] = true,
+}
+
+-- Whether the button with key shows no alert dot when its icon changes (see Alert).
+-- ns.db.quietButtons has true for quiet, or false for alerting when it's quiet by default.
 function Buttons.IsQuiet(key)
-    return ns.db.quietButtons[key] == true
+    local isQuiet = ns.db.quietButtons[key]
+    if isQuiet == nil then
+        return QUIET_BY_DEFAULT[key] == true
+    end
+    return isQuiet
 end
 
 function Buttons.SetQuiet(key, isQuiet)
-    ns.db.quietButtons[key] = isQuiet or nil
+    if isQuiet == (QUIET_BY_DEFAULT[key] == true) then
+        ns.db.quietButtons[key] = nil
+    else
+        ns.db.quietButtons[key] = isQuiet
+    end
     ns.Alert.Forget(key)
 end
 
@@ -281,8 +327,9 @@ function Buttons.Move(key, step)
 end
 
 -- Saved keys of removed addons ------------------------------------------------------------------
--- The order and hidden buttons are kept by key, also while an addon is turned off or not loaded
--- yet (it may come back). Keys whose button hasn't been there for PRUNE_DAYS are taken out.
+-- The order, hidden buttons, names and favorites are kept by key, also while an addon is turned
+-- off or not loaded yet (it may come back). Keys whose button hasn't been there for PRUNE_DAYS are
+-- taken out.
 
 -- Checked this long after login, once addons have made their buttons.
 local PRUNE_DELAY = 20
@@ -305,6 +352,9 @@ function Buttons.Prune()
         isSaved[key] = true
     end
     for key in pairs(ns.db.buttonNames) do
+        isSaved[key] = true
+    end
+    for key in pairs(ns.db.favoriteButtons) do
         isSaved[key] = true
     end
     local isGone = {}
@@ -334,6 +384,7 @@ function Buttons.Prune()
         ns.db.hiddenButtons[key] = nil
         ns.db.quietButtons[key] = nil
         ns.db.buttonNames[key] = nil
+        ns.db.favoriteButtons[key] = nil
         ns:Debug("Pruned", key)
     end
 end

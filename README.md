@@ -29,9 +29,14 @@ open). The menu stays open while you change things, so you see them at once.
     or tinted gold, silver or bronze, glowing or turning a little while you hover it.
   - The menu: button size and shape (circle, minimap button, square or diamond), how many
     buttons go down each column, and what it shows (icons, icons and names, or names only).
+  - Favourites: beside the launcher (always, or only on mouseover), or in the menu.
 - **Buttons** tab: untick buttons to take them out of the menu, drag them or use the arrows to
-  change the order, or sort them by name again. Click a button's red dot to turn its alerts off
-  (or on again), and right-click its name to rename it. Below the list: hide the addons' own minimap
+  change the order, or sort them by name again. Click a button's star to make it a favourite:
+  up to four show beside the launcher, out of the menu, for quick access, like satellites round
+  it (on the minimap's ring above and below the minimap button or the compass arrow, in an arc
+  round the circle or square, along the side bar; first in the menu when it's always open).
+  Click a button's red dot to turn its alerts off (or on again), and right-click its name to
+  rename it. Below the list: hide the addons' own minimap
   buttons (or keep them), collect hand-made minimap buttons too, show addons without a minimap
   button too (only in the addon compartment, or only for broker displays), and include
   Blizzard's expansion button.
@@ -42,8 +47,9 @@ open). The menu stays open while you change things, so you see them at once.
     toward the middle of the screen, left, right, up or down.
   - A dot on the launcher when an addon changes its icon to show something new (BugSack's bug
     turns red), until you open the menu; the buttons that changed show it too. Icons that change
-    as you zone in or out (BigWigs lights up in an instance) don't count. And a short pulse when
-    an addon adds a button while you play.
+    as you zone in or out (BigWigs lights up in an instance) don't count, and boss mods (BigWigs,
+    DBM) start with their dot off. Favourites show their own dot until you click them. And a
+    short pulse when an addon adds a button while you play.
   - Locked or not: unlocked, drag the launcher to move it; locked, Shift-drag still moves it.
     "Reset position" puts it back.
   - Settings for this character only, or shared by all your characters (switching reloads the
@@ -54,8 +60,8 @@ a button that opens the launcher settings.
 
 ## Good to know
 
-- The launchers you can put anywhere (circle, square, side bar, the menu always open) are drawn
-  above the action bars.
+- The launchers you can put anywhere (circle, square, side bar) stay behind your bags and action
+  bars; their menu opens over them.
 - Hand-made minimap buttons (addons that make their own, without LibDBIcon) are moved into the
   menu as they are: they keep their own clicks, tooltip and menus. Satellite stops the addon
   from moving them back while they're there. Untick one in the Buttons tab, or turn the option
@@ -63,7 +69,7 @@ a button that opens the launcher settings.
   LibDBIcon button start unticked, so they don't show twice. Plumber's Expansion Summary starts
   unticked both ways: it stays on the minimap, like Blizzard's expansion button.
 - In combat, `/satellite` opens the launcher settings: Blizzard's Options can't open then.
-- Order and hidden buttons are kept while an addon is turned off; after 30 days without it,
+- Order, hidden buttons, names and favourites are kept while an addon is turned off; after 30 days without it,
   they're forgotten.
 
 ## Commands

@@ -138,7 +138,9 @@ local function Place()
     local _, menuHeight = ns.Menu.GetSize()
     local scale = ns.Launcher.GetScale()
     local thickness, tabThickness, tabLength = RAIL_THICKNESS * scale, TAB_THICKNESS * scale, TAB_LENGTH * scale
-    railLength = math.max(MIN_RAIL_LENGTH * scale, menuHeight)
+    -- Long enough for the favorites beside the tab too (see PlaceFavorites).
+    railLength = math.max(MIN_RAIL_LENGTH * scale, menuHeight,
+        ns.Favorites.GetRowLength(ns.Favorites.GetCount(), tabLength))
     bar:SetSize(vertical and thickness or railLength, vertical and railLength or thickness)
     tab:SetSize(vertical and tabThickness or tabLength, vertical and tabLength or tabThickness)
     -- On the screen, however long the rail (the place may come from the circle or square).
@@ -160,8 +162,13 @@ function Style:Refresh()
     Place()
     local inward = INWARD[ns.db.sideBar.side]
     direction = inward.direction
-    local x = direction == "LEFT" and -MENU_GAP or direction == "RIGHT" and MENU_GAP or 0
-    local y = direction == "DOWN" and -MENU_GAP or direction == "UP" and MENU_GAP or 0
+    -- With favorites beside the tab, the menu opens past them.
+    local gap = MENU_GAP
+    if ns.Favorites.GetCount() > 0 then
+        gap = math.max(gap, ns.Favorites.GetRowDepth() - RAIL_THICKNESS * ns.Launcher.GetScale())
+    end
+    local x = direction == "LEFT" and -gap or direction == "RIGHT" and gap or 0
+    local y = direction == "DOWN" and -gap or direction == "UP" and gap or 0
     ns.Menu.SetFrameLevel(bar:GetFrameLevel() + 4, Theme.MENU_STRATA)
     ns.Menu.Place(bar, tab, inward.point, x, y, direction)
 end
@@ -178,6 +185,15 @@ end
 -- A short pop of the tab, to show a new button (see Launcher.Pulse).
 function Style:Pulse()
     tab.pop:Play()
+end
+
+-- The favorites (see Favorites): in a straight row along the bar on both sides of the tab, against
+-- the edge of the screen, reaching in past the bar; the menu opens past them (see Refresh).
+function Style:PlaceFavorites(points, count, size, gap)
+    local side = ns.db.sideBar.side
+    local width, height = tab:GetSize()
+    ns.Favorites.PlaceAlongEdge(points, count, size, gap, side, tab, IsVertical(side) and height or width)
+    return tab, 0, 0, tab
 end
 
 -- The alert dot (see Alert): on the tab's corner toward the middle of the screen and up (or

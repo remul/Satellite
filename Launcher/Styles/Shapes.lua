@@ -202,21 +202,59 @@ local function CreateStyle(key)
         return ns.Launcher.GetDirection(button)
     end
 
+    local function GetShapeRadius()
+        return math.max(GetSize(key)) / 2
+    end
+
+    -- Docked with favorites beside it, in an orbit round the shape (see Favorites), unless it's
+    -- in a corner.
+    local function IsOrbiting()
+        local count = ns.Favorites.GetCount()
+        return dockedEdge ~= nil and count > 0 and ns.Favorites.CanOrbitDocked(count, ns.Favorites.GetSize(),
+            ns.Favorites.GetGap(), dockedEdge, shape, GetShapeRadius())
+    end
+
     function Style:Refresh()
         local edge = Place()
         dockedEdge = edge
         ns.Menu.SetFrameLevel(button:GetFrameLevel() + 1, Theme.MENU_STRATA)
         direction = GetMenuDirection(edge)
         LayoutIcons(edge)
-        -- From the button's side: past the chevron.
+        -- From the button's side: past the chevron; docked, past the favorites' orbit too.
         local way = WAYS[direction]
         local extent = way.x ~= 0 and button:GetWidth() / 2 or button:GetHeight() / 2
         local reach = opener:GetMenuReach() - extent + MENU_GAP
+        if edge and IsOrbiting() then
+            -- From the shape's middle; the button's side is half the shape's depth from it.
+            local width, height = GetSize(key)
+            local orbitReach = ns.Favorites.GetDockedOrbitReach(ns.Favorites.GetCount(), ns.Favorites.GetSize(),
+                ns.Favorites.GetGap(), GetShapeRadius())
+            reach = math.max(reach, orbitReach + MENU_GAP - (IsVertical(edge) and width or height) / 2)
+        end
         ns.Menu.Place(button, button, way.point, way.x * reach, way.y * reach, direction)
     end
 
     function Style:SetHovered(isHovered)
         opener:SetHovered(isHovered)
+    end
+
+    -- The favorites (see Favorites): in an arc round the button, on the side away from the menu,
+    -- turned toward the middle of the screen where they wouldn't fit; docked, in an orbit round the
+    -- shape, or in a corner in a row along the edge.
+    function Style:PlaceFavorites(points, count, size, gap)
+        if IsOrbiting() then
+            ns.Favorites.PlaceInDockedOrbit(points, count, size, gap, dockedEdge, button, shape, GetShapeRadius())
+        elseif dockedEdge then
+            local width, height = button:GetSize()
+            local length = IsVertical(dockedEdge) and height or width
+            ns.Favorites.PlaceAlongEdge(points, count, size, gap, dockedEdge, button, length)
+        else
+            local way = WAYS[direction]
+            local radius = math.max(GetSize(key)) / 2 + gap + size / 2
+            local degrees = math.deg(math.atan2(-way.y, -way.x))
+            ns.Favorites.PlaceInArc(points, count, size, gap, button, radius, degrees)
+        end
+        return button, 0, 0, button
     end
 
     -- While dragged, the button follows the cursor; close to an edge (for the shapes
@@ -263,11 +301,11 @@ local function CreateStyle(key)
         -- Launcher.SetupMover).
         if position.edge ~= dockedEdge then
             Style:Refresh()
-            return
-        end
-        Place(true)
-        if GetMenuDirection(position.edge) ~= direction then
-            Style:Refresh()
+        else
+            Place(true)
+            if GetMenuDirection(position.edge) ~= direction then
+                Style:Refresh()
+            end
         end
     end
 

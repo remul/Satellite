@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0
+
+- **Favourites**: star up to four buttons in the Buttons tab and they show beside the launcher,
+  out of the menu, like satellites around it: on the minimap's ring above and below the minimap
+  button or the compass arrow, in an arc around the circle and square (an orbit when docked),
+  along the side bar. Always, or only while you hover the launcher ("Favorites" on the Launcher
+  tab); with the menu always open, they come first in it. They show their own alert dot, and
+  hide while you drag the launcher.
+- **Boss mods without the dot**: BigWigs (with LittleWigs and TinyWigs) and DBM change their
+  icon all the time, so their alert dot starts off. Turn it on in the Buttons tab.
+- **A calmer logo**: its buttons orbit more slowly while you hover it.
+
 ## 0.7.0
 
 - **WoW Forever**: Satellite runs there too. The symbol settings offer only what the game has

@@ -39,6 +39,9 @@ local OWN_SCALE = 3.2
 local OWN_LEFT_SHARE, OWN_RIGHT_SHARE = 0.34, 0.23
 -- Space between the open menu's left end and the right end of the arrow's shape.
 local MENU_GAP = 4
+-- With favorites beside the arrow, the menu opens this much further out, so they can sit closer
+-- to the arrow, still clear of it (see PlaceFavorites).
+local FAVORITE_MENU_ROOM = 14
 -- The + left of the tip: its font size, and how far down it's moved to sit level with the tip (the
 -- font draws it a little above the middle of its line).
 local PLUS_SIZE = 28
@@ -172,8 +175,12 @@ end
 function Style:Refresh()
     local half = Minimap:GetWidth() / 2
     Layout(half)
-    -- The menu comes out from under the arrow, but outside the minimap's ring.
+    -- The menu comes out from under the arrow, but outside the minimap's ring (and further out with
+    -- favorites).
     menuRight = math.min(closedX + rightOffset, -half * RING_OUTER_SHARE - 2)
+    if ns.Favorites.GetCount() > 0 then
+        menuRight = menuRight - FAVORITE_MENU_ROOM * ns.Launcher.GetScale()
+    end
     -- Room on the screen for the open menu and the arrow beside it on the west? If not, on the
     -- east, when there's room there.
     local reach = ns.Menu.GetSize() + MENU_GAP + 2 * rightOffset - menuRight
@@ -209,6 +216,32 @@ end
 -- A short pop of the arrow, to show a new button (see Launcher.Pulse).
 function Style:Pulse()
     arrow.pop:Play()
+end
+
+-- The favorites (see Favorites): on the ring above and below the arrow, one side and then the
+-- other, outward; they stay there while the arrow rides out with the menu, far enough round the
+-- ring to be clear of the open menu. On the ring where the minimap button sits (see
+-- Styles/Satellite.lua).
+local FAVORITE_RING_SHARE = 1.02
+
+function Style:PlaceFavorites(points, count, size, gap)
+    local base = isEast and 0 or 180
+    -- Up from the west point is clockwise, from the east one counterclockwise.
+    local up = isEast and 1 or -1
+    local _, height = arrow:GetSize()
+    -- Just clear of the arrow (its edge is thin, so no gap); and with their sides inside the menu's
+    -- end (menuRight, on the west side).
+    local radius = Minimap:GetWidth() / 2 * FAVORITE_RING_SHARE
+    local clearOfMenu = math.deg(math.acos(math.max(-1, math.min(1, (-menuRight - size / 2 - gap) / radius))))
+    local first = math.max(clearOfMenu, ns.Favorites.GetRingStep(height / 2 + size / 2, FAVORITE_RING_SHARE))
+    local step = ns.Favorites.GetRingStep(size + gap, FAVORITE_RING_SHARE)
+    for index = 1, count do
+        local away = first + (math.ceil(index / 2) - 1) * step
+        local side = index % 2 == 1 and up or -up
+        local x, y = ns.Launcher.GetMinimapEdgePoint(base + side * away, FAVORITE_RING_SHARE)
+        points[2 * index - 1], points[2 * index] = x + ringOffset, y
+    end
+    return frame, ToSide(closedX), 0, arrow
 end
 
 -- The alert dot (see Alert): above the arrow.

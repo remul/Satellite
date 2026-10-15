@@ -37,10 +37,13 @@ function Launcher.Refresh()
     end
     ns.Compass.Update()
     style:Show()
-    -- The style places the menu from its size, so that's measured first.
+    -- The style places the menu from its size, so that's measured first; and makes room for the
+    -- favorites beside it (see Favorites), which the menu doesn't show then.
+    ns.Favorites.Update()
     ns.Menu.Measure()
     style:Refresh()
     ns.Menu.Refresh()
+    ns.Favorites.Refresh()
     -- A new style starts with the menu closed; with the settings open, it opens again, so the
     -- changes show.
     if ns.Settings.IsShown() and not ns.Menu.IsOpen() then
@@ -69,16 +72,21 @@ local function IsMouseOverHitArea(frame)
     return frame:IsMouseOver(-top, bottom, left, -right)
 end
 
-local function IsMouseOverLauncher()
-    if ns.Menu.IsOpen() and ns.Menu.GetPanel():IsMouseOver() then
-        return true
-    end
+local function IsMouseOverOpener()
     for _, opener in ipairs(openers) do
         if opener:IsVisible() and IsMouseOverHitArea(opener) then
             return true
         end
     end
     return false
+end
+
+-- Over the launcher, its open menu, or the favorites beside it.
+local function IsMouseOverLauncher()
+    if ns.Menu.IsOpen() and ns.Menu.GetPanel():IsMouseOver() then
+        return true
+    end
+    return IsMouseOverOpener() or ns.Favorites.IsMouseOver()
 end
 
 -- An addon's dropdown, opened from one of the menu's buttons, needs the menu to stay (also see
@@ -97,7 +105,8 @@ watcher:SetScript("OnUpdate", function(self, elapsed)
     local isOver = IsMouseOverLauncher()
     if not ns.Menu.IsOpen() then
         awayTime = 0
-        if ns.db.openOnHover and isOver and not current.alwaysOpen and not current.isDragging then
+        -- Only the launcher itself opens it, not the favorites beside it.
+        if ns.db.openOnHover and IsMouseOverOpener() and not current.alwaysOpen and not current.isDragging then
             hoverTime = hoverTime + elapsed
             if hoverTime >= HOVER_OPEN_DELAY then
                 hoverTime, hoverOpenTime = 0, GetTime()
@@ -220,6 +229,7 @@ function Launcher.SetupMover(frame, onlyStyle)
                 ns.Menu.Close(true)
             end
             current:OnDragStart()
+            ns.Favorites.HideForDrag()
         end
     end)
     frame:SetScript("OnDragStop", function()
@@ -240,11 +250,13 @@ function Launcher.SetupOpener(button)
     openers[#openers + 1] = button
     button:SetScript("OnEnter", function(self)
         watcher:Show()
+        ns.Favorites.SetLauncherHovered(true)
         current:SetHovered(true)
         ns.Menu.SetHovered(true)
         ShowTooltip(self)
     end)
     button:SetScript("OnLeave", function(self)
+        ns.Favorites.SetLauncherHovered(false)
         current:SetHovered(false)
         ns.Menu.SetHovered(false)
         if GameTooltip:IsOwned(self) then

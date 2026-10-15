@@ -195,7 +195,7 @@ end
 -- Gets the frames for the launcher's buttons and puts them in the panel, left to right, row by
 -- row. Opening, they pop in from the launcher's side outward.
 local function UpdateButtons(withAnimation)
-    local buttons = ns.Buttons.GetLauncherButtons()
+    local buttons = ns.Favorites.GetMenuButtons()
     UpdateSize(buttons)
     local keys = {}
     wipe(shownFrames)
@@ -206,7 +206,14 @@ local function UpdateButtons(withAnimation)
             column, row = math.floor((index - 1) / layout.rows), (index - 1) % layout.rows
         end
         local buttonFrame = ns.LauncherButton.Get(panel, button)
+        if buttonFrame.isFavorite then
+            -- Back from beside the launcher: the menu shows its dot when it opens (see Alert).
+            buttonFrame.isFavorite = false
+            ns.LauncherButton.SetAlerted(button.key, false)
+        end
         ns.LauncherButton.SetLook(buttonFrame, ns.db.menuLabels, layout.size, layout.labelWidth)
+        -- Its strata too: it may come from beside the launcher, in another (see Favorites).
+        buttonFrame:SetFrameStrata(panel:GetFrameStrata())
         buttonFrame:SetFrameLevel(panel:GetFrameLevel() + 2)
         buttonFrame:ClearAllPoints()
         buttonFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING + column * layout.cellX,
@@ -230,7 +237,7 @@ local function UpdateButtons(withAnimation)
             end
         end
     end
-    ns.LauncherButton.HideOthers(keys)
+    ns.LauncherButton.HideOthers(keys, panel)
 end
 
 -- Placing --------------------------------------------------------------------------------------
@@ -306,6 +313,17 @@ function Menu.GetDistanceToOpen()
     return stepX * rest, stepY * rest
 end
 
+-- Where the menu is once open: its left, bottom, width and height in UIParent's units (as last
+-- placed; nil before that), e.g. for the favorites to keep clear of it (see Favorites).
+function Menu.GetOpenRect()
+    local left, bottom, width, height = holder:GetRect()
+    if not left then
+        return nil
+    end
+    local scale = holder:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return left * scale, bottom * scale, width * scale, height * scale
+end
+
 -- The menu's frame level, and its strata (nil: its launcher's); its buttons go 3 above.
 function Menu.SetFrameLevel(level, strata)
     frameLevel, frameStrata = level, strata
@@ -324,6 +342,7 @@ function Menu.Open()
     isOpen = true
     UpdateButtons(true)
     ns.Alert.OnMenuOpened()
+    ns.Favorites.Wake()
     Animate(1, OPEN_TIME)
 end
 
@@ -340,6 +359,7 @@ function Menu.Close(keepSettings)
         ns.LauncherButton.Disappear(buttonFrame)
     end
     ns.Alert.OnMenuClosed()
+    ns.Favorites.Wake()
     Animate(0, CLOSE_TIME)
 end
 
@@ -363,7 +383,7 @@ end
 
 -- Sizes the menu for the buttons it shows, without placing them (for the style to place it).
 function Menu.Measure()
-    UpdateSize(ns.Buttons.GetLauncherButtons())
+    UpdateSize(ns.Favorites.GetMenuButtons())
 end
 
 -- Redraws after the buttons or settings changed (the border colour too).

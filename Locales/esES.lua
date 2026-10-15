@@ -117,6 +117,16 @@ local strings = {
     ["Or right-click the launcher."] = "O clic derecho en el lanzador.",
     ["Collect hand-made minimap buttons"] = "Recoger los botones del minimapa hechos a mano",
     ["Buttons that addons make without the usual library. Satellite moves them into its menu, where they work as before. Only while the addons' own minimap buttons are hidden."] = "Botones que los accesorios crean sin la biblioteca habitual. Satellite los mueve a su menú, donde funcionan como antes. Solo mientras los botones del minimapa de los accesorios estén ocultos.",
+    ["Favorites"] = "Favoritos",
+    ["Beside the launcher"] = "Junto al lanzador",
+    ["Beside the launcher on mouseover"] = "Junto al lanzador al pasar el ratón",
+    ["In the menu"] = "En el menú",
+    ["Favorite"] = "Favorito",
+    ["Shown beside the launcher, outside the menu, for quick access."] = "Se muestra junto al lanzador, fuera del menú, para un acceso rápido.",
+    ["Click to make it a favorite."] = "Haz clic para hacerlo favorito.",
+    ["Click to take it out of the favorites."] = "Haz clic para quitarlo de favoritos.",
+    ["You can have up to %d favorites."] = "Puedes tener hasta %d favoritos.",
+    ["Click a star to make a button a favorite: it shows beside the launcher."] = "Haz clic en una estrella para hacer favorito un botón: se muestra junto al lanzador.",
 }
 
 ns.RegisterLocale("esES", strings)

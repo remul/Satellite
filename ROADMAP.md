@@ -25,6 +25,14 @@ Shipped, but so far only checked in code and with simulations outside the game:
   HereBeDragons pin table (`minimapPins`) against the real library with TomTom or HandyNotes.
 - **Combat**: the menu, the settings and dragging in combat, and the expansion button's page
   opening once combat ends (`Blizzard.Click` in `Collectors/Blizzard.lua`).
+- **Favourites** (`Launcher/Favorites.lua`, each style's `PlaceFavorites`): on the minimap's ring
+  beside the minimap button (are Blizzard's buttons, calendar or mail, in the way?) and above and
+  below the compass arrow, clear of the open menu; the arc round the circle and square, near the
+  screen's edges too; the orbit when docked (the menu opening past it), the row in corners; the
+  side bar's row beside the tab (the menu opening past it); hidden while dragging.
+  Showing on mouseover (they fly out, and back after `LEAVE_DELAY`), their tooltips and clicks,
+  hand-made buttons as favourites, their own alert dot, the star in the Buttons list (Blizzard's
+  `auctionhouse-icon-favorite` atlas; in WoW Forever too?), and boss mods' dot off by default.
 - **Compass arrow**: its measures (`COMPASS_TIP_SHARE`, `COMPASS_HALF_HEIGHT_SHARE` in
   `Launcher/Styles/Arrow.lua`) come from one screenshot; check them at other minimap sizes, and
   `EAST_NUDGE` on the east side, in place of the east arrow and beside it.

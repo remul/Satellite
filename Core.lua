@@ -60,6 +60,12 @@ local DEFAULTS = {
     hiddenButtons = {},
     -- The buttons whose icon changes don't show the alert dot (see Alert): [key] = true.
     quietButtons = {},
+    -- The buttons the player made favorites: shown beside the launcher, out of the menu (see
+    -- Launcher/Favorites.lua): [key] = true.
+    favoriteButtons = {},
+    -- Where favorites show: "always" (beside the launcher), "hover" (beside it while it's
+    -- hovered or the menu is open) or "menu" (first in the menu).
+    showFavorites = "always",
     -- The names the player gave buttons, in place of their own (see Buttons.SetName): [key] = name.
     buttonNames = {},
     -- When each of those keys' buttons was last there: [key] = time(). Keys not seen for a while

@@ -8,7 +8,11 @@ local _, ns = ...
 --
 -- Some addons use their icon to show a state that follows the zone (BigWigs lights up in an
 -- instance): changes just after a loading screen or a zone change are taken as the new normal.
--- The player can also turn the dot off for single buttons (Buttons.SetQuiet).
+-- The player can also turn the dot off for single buttons (Buttons.SetQuiet); boss mods have it
+-- off until turned on.
+--
+-- Favorites beside the launcher (see Favorites) show their own dot, until they're clicked; and not
+-- the launcher's, as they can be seen already (unless they only show on mouseover).
 local Alert = {}
 ns.Alert = Alert
 
@@ -57,11 +61,30 @@ local function CreateDot()
     dot:Hide()
 end
 
+-- Whether the button with key changed its icon since it was last seen.
+function Alert.IsChanged(key)
+    return changed[key] == true
+end
+
+-- Whether a button whose change the launcher's dot shows changed its icon: one in the menu, or
+-- a favorite that only shows on mouseover (the others show their own).
+local function HasLauncherChanges()
+    if ns.db.showFavorites == "hover" then
+        return next(changed) ~= nil
+    end
+    for key in pairs(changed) do
+        if not ns.Favorites.IsShownOutside(key) then
+            return true
+        end
+    end
+    return false
+end
+
 -- Shows or hides the dot on the launcher, where the current style puts it.
 function Alert.Update()
     local style = ns.Launcher.GetStyle()
     local frame, point, x, y
-    if ns.db.showAlerts and next(changed) and not ns.Menu.IsOpen() and style.GetAlertPoint then
+    if ns.db.showAlerts and HasLauncherChanges() and not ns.Menu.IsOpen() and style.GetAlertPoint then
         frame, point, x, y = style:GetAlertPoint()
     end
     if not frame then
@@ -82,12 +105,14 @@ function Alert.Update()
     dot:Show()
 end
 
--- Remembers every button's icon as it is now.
-local function Remember()
-    wipe(seen)
-    wipe(changed)
+-- Remembers every button's icon as it is now; with menuOnly, the menu's, not the favorites'
+-- beside the launcher (theirs stay until they're clicked).
+local function Remember(menuOnly)
     for _, button in ipairs(ns.Buttons.GetLauncherButtons()) do
-        seen[button.key] = ns.LauncherButton.GetIconLook(button)
+        if not menuOnly or not ns.Favorites.IsShownOutside(button.key) then
+            seen[button.key] = ns.LauncherButton.GetIconLook(button)
+            changed[button.key] = nil
+        end
     end
 end
 
@@ -106,6 +131,9 @@ function Alert.Check(key)
     else
         changed[key] = ns.LauncherButton.GetIconLook(button) ~= seen[key] or nil
     end
+    if ns.Favorites.IsShownOutside(key) then
+        ns.LauncherButton.SetAlerted(key, ns.db.showAlerts and changed[key] == true)
+    end
     Alert.Update()
 end
 
@@ -118,10 +146,14 @@ end
 -- The menu opened: the buttons that changed show their dot, and the launcher's goes.
 function Alert.OnMenuOpened()
     for key in pairs(changed) do
-        ns.LauncherButton.SetAlerted(key, ns.db.showAlerts)
+        if not ns.Favorites.IsShownOutside(key) then
+            ns.LauncherButton.SetAlerted(key, ns.db.showAlerts)
+        end
     end
     if isWatching then
-        Remember()
+        -- Favorites on mouseover show with the menu: seen now too (their own dot stays until
+        -- they're clicked).
+        Remember(ns.db.showFavorites ~= "hover")
     end
     Alert.Update()
 end

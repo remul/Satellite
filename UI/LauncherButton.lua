@@ -2,7 +2,8 @@ local _, ns = ...
 
 -- The buttons inside the launcher: one per collected button (see Buttons), drawn like a minimap
 -- button, that shows the addon's icon and tooltip and passes clicks on to the addon. Frames are
--- kept per key and reused, as WoW can't delete frames.
+-- kept per key and reused, as WoW can't delete frames; a favorite's is beside the launcher instead
+-- (see Favorites; isFavorite on the frame).
 local LauncherButton = {}
 ns.LauncherButton = LauncherButton
 
@@ -83,9 +84,12 @@ function LauncherButton.SetAlerted(key, isShown)
     end
 end
 
+-- Clears the menu's dots; favorites keep theirs until they're clicked.
 function LauncherButton.ClearAlerts()
-    for key in pairs(frames) do
-        LauncherButton.SetAlerted(key, false)
+    for key, self in pairs(frames) do
+        if not self.isFavorite then
+            LauncherButton.SetAlerted(key, false)
+        end
     end
 end
 
@@ -109,7 +113,7 @@ local function SetIcon(self)
     LauncherButton.SetIconTexture(self.icon, self.button)
 end
 
--- The menu's button with key, or nil if it has none yet.
+-- The menu's (or a favorite's) button with key, or nil if it has none yet.
 function LauncherButton.GetFrame(key)
     return frames[key]
 end
@@ -184,6 +188,11 @@ end
 -- dropdown instead, attached to the button: the menu stays for it. Some addons open theirs a
 -- frame later, so that's looked at then.
 function LauncherButton.AfterClick(self, mouseButton)
+    -- A favorite is beside the launcher: the menu stays as it is, and its dot goes.
+    if self.isFavorite then
+        ns.Alert.Forget(self.button.key)
+        return
+    end
     if not ns.db.closeOnClick or ns.Settings.IsShown() then
         return
     end
@@ -297,22 +306,25 @@ local function CreateFrameFor(parent)
     return self
 end
 
--- The frame for button (see Buttons), made the first time.
+-- The frame for button (see Buttons), made the first time, on parent (the menu's panel, or the
+-- favorites' holder; it moves between them).
 function LauncherButton.Get(parent, button)
     local self = frames[button.key]
     if not self then
         self = CreateFrameFor(parent)
         frames[button.key] = self
+    elseif self:GetParent() ~= parent then
+        self:SetParent(parent)
     end
     self.button = button
     SetIcon(self)
     return self
 end
 
--- Hides every frame whose button isn't in keys ([key] = true).
-function LauncherButton.HideOthers(keys)
+-- Hides every frame on parent whose button isn't in keys ([key] = true).
+function LauncherButton.HideOthers(keys, parent)
     for key, self in pairs(frames) do
-        if not keys[key] then
+        if not keys[key] and self:GetParent() == parent then
             self.appear:Stop()
             self.disappear:Stop()
             self:Hide()

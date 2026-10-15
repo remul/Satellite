@@ -112,6 +112,31 @@ function Style:Pulse()
     opener:Pulse()
 end
 
+-- The favorites (see Favorites): along the ring on both sides of the button, like more minimap
+-- buttons: two above it and two below, the first of each pair next to it. In order from the top:
+-- { side (1: above), place from the button on that side }.
+local FAVORITE_SLOTS = {
+    [1] = { { 1, 1 } },
+    [2] = { { 1, 1 }, { -1, 1 } },
+    [3] = { { 1, 2 }, { 1, 1 }, { -1, 1 } },
+    [4] = { { 1, 2 }, { 1, 1 }, { -1, 1 }, { -1, 2 } },
+}
+
+function Style:PlaceFavorites(points, count, size, gap)
+    local degrees = GetDegrees()
+    -- Counterclockwise along the ring goes up on its right half, down on its left.
+    local up = math.cos(math.rad(degrees)) >= 0 and 1 or -1
+    local first = ns.Favorites.GetRingStep(GetSize() / 2 + gap + size / 2, RING_SHARE)
+    local step = ns.Favorites.GetRingStep(size + gap, RING_SHARE)
+    for index, slot in ipairs(FAVORITE_SLOTS[count]) do
+        local away = first + (slot[2] - 1) * step
+        local x, y = ns.Launcher.GetMinimapEdgePoint(degrees + slot[1] * up * away, RING_SHARE)
+        points[2 * index - 1], points[2 * index] = x, y
+    end
+    local x, y = ns.Launcher.GetMinimapEdgePoint(degrees, RING_SHARE)
+    return frame, x, y, button
+end
+
 -- The alert dot (see Alert): on the ring at the top right.
 function Style:GetAlertPoint()
     local offset = GetSize() * 0.33
