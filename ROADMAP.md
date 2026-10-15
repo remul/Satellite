@@ -4,8 +4,8 @@ Planned features, ideas and open questions for Satellite. Move an entry to
 [CHANGELOG.md](CHANGELOG.md) when it ships, and delete it here.
 
 Satellite gathers other addons' minimap buttons into one launcher. The launcher comes in several
-styles; the default is a round button with three discs on the minimap's ring that slides out a
-menu.
+styles; the default is a round button with Satellite's logo on the minimap's ring that slides
+out a menu.
 
 ## Collecting buttons
 
@@ -17,7 +17,7 @@ survive reloads. Still to do:
   (`/satellite test buttons`), including their tooltips, right-click menus and icon changes.
   Check the HereBeDragons pin table (`minimapPins`) against the real library with TomTom or
   HandyNotes. Plumber's own button starts unticked, on the minimap (`STAY_ON_MINIMAP` in
-  `Collectors/Handmade.lua`); its LibDBIcon button is in the menu.
+  `Collectors/Handmade.lua`), and so does its LibDBIcon button (`OUT_OF_MENU` in `Buttons.lua`).
 
 ## Buttons
 

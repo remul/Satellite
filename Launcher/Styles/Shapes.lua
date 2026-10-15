@@ -1,14 +1,14 @@
 local _, ns = ...
 
 -- The circle and square styles: a button you can drag anywhere, by default beside the minimap's
--- top left, that looks like the minimap button: a stack of coloured discs and a gold chevron
+-- top left, that looks like the minimap button: the logo and a gold chevron
 -- (see StackButton). The menu slides out toward the middle of the screen.
 --
 -- Dragged against an edge of the screen, the circle and square dock there: they keep their size
 -- and look, with part of them past the edge, cut off by it, and the menu opens away from the edge.
 local Theme = ns.Theme
 
--- The buttons' width and height: the square is wider than tall, to fit its row of discs.
+-- The buttons' width and height: the square is wider than tall.
 local SIZES = { circle = { 50, 50 }, square = { 56, 42 } }
 -- How much of the shape goes past the edge while docked, as a share of its depth (its size across
 -- the edge).
@@ -19,8 +19,9 @@ local DEFAULT_DEGREES = 150
 local DEFAULT_DISTANCE_SHARE = 1.12
 -- Space between the button (or its chevron) and the menu.
 local MENU_GAP = 4
--- How close to an edge (in interface units) the button has to be dragged to dock there.
-local SNAP_DISTANCE = 16
+-- How close to an edge (in interface units) the cursor docks the button there, wherever it was
+-- grabbed.
+local CURSOR_SNAP_DISTANCE = 2
 
 -- The size of key's button, from the launcher size setting.
 local function GetSize(key)
@@ -79,7 +80,7 @@ local function CreateStyle(key)
     local function Create()
         button = CreateFrame("Button", "SatelliteLauncher_" .. key, UIParent)
         button:SetFrameStrata(Theme.STRATA)
-        button:SetFrameLevel(10)
+        button:SetFrameLevel(Theme.LEVEL)
         button:SetClampedToScreen(true)
         shape = CreateFrame("Frame", nil, button)
         DRAWERS[key](shape)
@@ -118,9 +119,8 @@ local function CreateStyle(key)
         end
     end
 
-    -- The discs, in the middle of the whole shape, also while docked (cut off by the edge then).
+    -- The logo, in the middle of the whole shape, also while docked (cut off by the edge then).
     local function LayoutIcons(edge)
-        local arrangement = key == "square" and "row" or "cluster"
         local size = math.min(GetSize(key))
         local x, y = 0, 0
         if edge then
@@ -128,19 +128,23 @@ local function CreateStyle(key)
             local shift = GetDock(key, IsVertical(edge)).overhang / 2
             x, y = EDGES[edge].x * shift, EDGES[edge].y * shift
         end
-        opener:Layout(direction, arrangement, size, x, y)
+        opener:Layout(direction, size, x, y)
     end
 
     -- Docked on an edge, at the place the player dragged it to, or beside the minimap. Returns
     -- the edge it's docked on.
     local function Place()
-        local position = ns.Launcher.GetPosition(key)
+        local position = ns.Launcher.GetPosition("shape")
         local edge = position and position.edge
         Layout(edge)
         button:ClearAllPoints()
         if edge then
+            -- On the screen, however long the button (the place may come from the side bar).
             local vertical = IsVertical(edge)
-            button:SetPoint(edge, UIParent, edge, vertical and 0 or position.offset, vertical and position.offset or 0)
+            local dock = GetDock(key, vertical)
+            local room = vertical and (UIParent:GetHeight() - dock.height) / 2 or (UIParent:GetWidth() - dock.width) / 2
+            local offset = math.max(-room, math.min(room, position.offset))
+            button:SetPoint(edge, UIParent, edge, vertical and 0 or offset, vertical and offset or 0)
         elseif position and position.x then
             button:SetPoint("CENTER", UIParent, "BOTTOMLEFT", position.x, position.y)
         else
@@ -155,7 +159,7 @@ local function CreateStyle(key)
         opener:SetProgress(progress)
     end
 
-    -- A short bounce of the discs, to show a new button (see Launcher.Pulse).
+    -- A short pop of the logo, to show a new button (see Launcher.Pulse).
     function Style:Pulse()
         opener:Pulse()
     end
@@ -186,7 +190,7 @@ local function CreateStyle(key)
     function Style:Refresh()
         local edge = Place()
         dockedEdge = edge
-        ns.Menu.SetFrameLevel(button:GetFrameLevel() + 1)
+        ns.Menu.SetFrameLevel(button:GetFrameLevel() + 1, Theme.MENU_STRATA)
         -- Docked: away from the edge; otherwise as set (see openDirection), or toward the middle.
         local setting = ns.db.openDirection
         if edge then
@@ -209,7 +213,7 @@ local function CreateStyle(key)
     end
 
     -- While dragged, the button follows the cursor; close to an edge (for the shapes
-    -- that dock), it docks there, along it with the cursor, keeping the menu on the screen.
+    -- that dock), it docks there, along it with the cursor.
     local grabX, grabY = 0, 0
 
     local function GetCursor()
@@ -218,38 +222,31 @@ local function CreateStyle(key)
         return x / scale, y / scale
     end
 
+    -- Docks where the shape, following the cursor, would be past the edge by half its overhang:
+    -- halfway between its place against the edge and its docked place, so it moves the least
+    -- either way. Or, as the cursor can't leave the screen, when the cursor reaches the edge.
     local function FollowCursor()
-        local x, y = GetCursor()
-        x, y = x + grabX, y + grabY
+        local cursorX, cursorY = GetCursor()
+        local x, y = cursorX + grabX, cursorY + grabY
         local width, height = UIParent:GetWidth(), UIParent:GetHeight()
         local halfWidth, halfHeight = GetSize(key)
         halfWidth, halfHeight = halfWidth / 2, halfHeight / 2
         local position
-        local distances = {
-            LEFT = x - halfWidth, RIGHT = width - x - halfWidth, BOTTOM = y - halfHeight, TOP = height - y - halfHeight,
-        }
-        local edge = "LEFT"
-        for candidate, distance in pairs(distances) do
-            if distance < distances[edge] then
-                edge = candidate
-            end
-        end
-        if distances[edge] < SNAP_DISTANCE then
-            local menuWidth, menuHeight = ns.Menu.GetSize()
-            local dock = GetDock(key, IsVertical(edge))
-            local along, room
-            if IsVertical(edge) then
-                along, room = y - height / 2, (height - math.max(dock.height, menuHeight)) / 2
-            else
-                along, room = x - width / 2, (width - math.max(dock.width, menuWidth)) / 2
-            end
+        -- The edge nearest the shape's side, and how far the shape's side and the cursor are from it.
+        local edge, along, distance = ns.Launcher.GetNearestEdge(x, y, halfWidth, halfHeight)
+        local dock = GetDock(key, IsVertical(edge))
+        if distance <= -dock.overhang / 2
+            or ns.Launcher.GetEdgeDistance(edge, cursorX, cursorY) <= CURSOR_SNAP_DISTANCE then
+            -- Along the edge as far as the corner; the menu moves onto the screen by itself (see
+            -- Menu.Place).
+            local room = IsVertical(edge) and (height - dock.height) / 2 or (width - dock.width) / 2
             position = { edge = edge, offset = math.max(-room, math.min(room, along)) }
         end
         position = position or {
             x = math.max(halfWidth, math.min(width - halfWidth, x)),
             y = math.max(halfHeight, math.min(height - halfHeight, y)),
         }
-        ns.db.positions[key] = position
+        ns.Launcher.SetShapePosition(position)
         Style:Refresh()
     end
 

@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- A battle banner (Arms). -->
-  <path d="M15,9 V60" fill="none" stroke="#000000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M15,9 V60" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18,10 H54 L45,23 L54,36 H18 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="15" cy="7" r="4" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-</svg>

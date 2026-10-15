@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- Death Knight: a skull. -->
-  <path d="M32,6 C47,6 56,16 56,29 C56,37 52,42 47,44 L47,52 C47,55 45,57 42,57 L22,57 C19,57 17,55 17,52 L17,44 C12,42 8,37 8,29 C8,16 17,6 32,6 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="22.5" cy="30" r="6.5" fill="#000000"/>
-  <circle cx="41.5" cy="30" r="6.5" fill="#000000"/>
-  <path d="M32,37 L28,44 L36,44 Z" fill="#000000"/>
-  <path d="M26,49 V57 M32,49 V57 M38,49 V57" stroke="#000000" stroke-width="2.5"/>
-</svg>

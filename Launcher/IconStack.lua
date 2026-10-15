@@ -1,225 +1,206 @@
 local _, ns = ...
 
--- A small stack of three coloured discs, overlapping, standing for the addon buttons inside: what
--- the minimap button, circle and square show. Each has a simple glyph (a dragon, a potion and a
--- sword, or the player's class and spec) instead of the addons' own icons, so the launcher stays
--- quiet; coloured, silver, gold, bronze or in the class colour. Members of the guild Prisma can
--- show its logo instead. Spread, the discs move apart and grow a
--- little (while hovered or open). Two arrangements: a "cluster" that fits in a circle (one disc
--- on top, two below), and a "row" for the square.
+-- What the minimap button, circle and square show: Satellite's logo (the default), whose buttons
+-- go round its orbit while it's hovered or open; the guild Prisma's, for its members; or the
+-- player's class, spec or hero talent image. Spread (hovered or open), the logos grow a little.
 local IconStack = {}
 ns.IconStack = IconStack
 
 local Theme = ns.Theme
 
--- The discs' glyphs (see tools/render_glyphs.sh), this share of a disc's size: as set
--- (ns.db.discSymbols), a dragon, a potion and a sword, or the player's class and spec: the class's
--- glyph on the disc that stands out (CLASS_DISC), and two for the spec (by its index in the class)
--- on the others. Without a spec, the class's glyph on all three.
-local GLYPH_SHARE = 0.74
-local ADVENTURE_GLYPHS = { "Dragon", "Potion", "Sword" }
-local CLASS_GLYPHS = {
-    WARRIOR = { "Axe", { "Sword", "Banner" }, { "Fist", "Flame" }, { "Shield", "Tower" } },
-    PALADIN = { "Hammer", { "Sun", "Wings" }, { "Shield", "Tower" }, { "Sword", "Crown" } },
-    HUNTER = { "Bow", { "Paw", "Fang" }, { "Arrow", "Crosshair" }, { "Spear", "Bomb" } },
-    ROGUE = { "Dagger", { "Drop", "Skull" }, { "Dice", "Anchor" }, { "Mask", "Moon" } },
-    PRIEST = { "Cross", { "Shield", "Sun" }, { "Wings", "Candle" }, { "Eye", "Skull" } },
-    DEATHKNIGHT = { "Skull", { "Drop", "Sword" }, { "Snowflake", "Sword" }, { "Bones", "Tombstone" } },
-    SHAMAN = { "Lightning", { "Flame", "Mountain" }, { "Fist", "Axe" }, { "Wave", "Drop" } },
-    MAGE = { "Star", { "Book", "Hourglass" }, { "Flame", "Meteor" }, { "Snowflake", "Icicle" } },
-    WARLOCK = { "Flame", { "Skull", "Eye" }, { "Horns", "Fang" }, { "Meteor", "Shard" } },
-    MONK = { "Balance", { "Keg", "Shield" }, { "Lotus", "Cloud" }, { "Fist", "ClawMarks" } },
-    DRUID = { "Leaf", { "Moon", "Star" }, { "ClawMarks", "Fang" }, { "Paw", "Shield" }, { "Tree", "Lotus" } },
-    DEMONHUNTER = { "Horns", { "Wings", "ClawMarks" }, { "Shield", "Flame" }, { "Eye", "Moon" } },
-    EVOKER = { "Dragon", { "Flame", "Wings" }, { "Lotus", "Drop" }, { "Hourglass", "Mountain" } },
-}
--- The disc that stands out in each arrangement (see ARRANGEMENTS): the top one, or the middle.
-local CLASS_DISC = { cluster = 1, row = 2 }
-
--- The guild Prisma's logo (Media/Prisma.tga, its crystal on its own), in place of the discs:
--- offered only to the guild's members ("prisma" in ns.db.discSymbols). Its part of the texture
--- (left, right, top, bottom), its height as a share of the button's (its smaller side), so it
--- stays inside any launcher's border even grown, and how much bigger it gets spread.
+-- The logos (ns.db.discSymbols): Satellite's symbol from its emblem (see tools/render_logos.sh),
+-- in the border colour, whose buttons (orbiter) go round its orbit; and the guild Prisma's (its
+-- crystal on its own, in its own colours), offered only to the guild's members. Each with its
+-- texture, its part of the texture (left, right, top, bottom; the texture is square) and its
+-- height as a share of the button's (its smaller side), so it stays inside any launcher's border
+-- even grown; LOGO_GROWTH is how much bigger it gets spread.
 local PRISMA_GUILD = "Prisma"
-local LOGO = ns.MEDIA .. "Prisma"
-local LOGO_COORDS = { 40 / 256, 216 / 256, 8 / 256, 252 / 256 }
-local LOGO_SHARE = 0.75
+local LOGOS = {
+    satellite = {
+        texture = ns.MEDIA .. "SatelliteLogo", orbiter = ns.MEDIA .. "SatelliteLogoButtons",
+        coords = { 0, 1, 0, 1 }, share = 0.7, isTinted = true,
+    },
+    prisma = { texture = ns.MEDIA .. "Prisma", coords = { 40 / 256, 216 / 256, 8 / 256, 252 / 256 }, share = 0.75 },
+}
 local LOGO_GROWTH = 0.075
+-- The player's own images from the game, cut round (isMasked) with a dark outline (isRound): as big
+-- as fits inside the launcher's border (fillsBorder), with IMAGE_OUTLINE and IMAGE_GAP around
+-- them, not growing; and how much of each side is cut off, so their own edges and rims go: the
+-- spec's square icon, and the class's icon and the hero talent tree's emblem, round with a rim.
+-- IMAGE_BORDER is how far the border reaches in from the edge: the square's (see Theme.AddBox),
+-- a pixel more than the round ones' (Theme.ROUND_BORDER).
+local IMAGE_BORDER, IMAGE_OUTLINE, IMAGE_GAP = 3.5, 1.5, 0.5
+-- The images' colour settings (ns.db.imageColors): grey, and tinted from grey; "full" is their
+-- own colours.
+local IMAGE_TINTS = {
+    gray = CreateColor(1, 1, 1, 1),
+    gold = CreateColor(1, 0.84, 0.5, 1),
+    silver = CreateColor(0.86, 0.88, 0.93, 1),
+    bronze = CreateColor(0.95, 0.7, 0.48, 1),
+}
+local SPEC_IMAGE = { trim = 0.07 }
+local EMBLEM_IMAGE = { trim = 0.12 }
+local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 -- Whether the player's character is in the guild Prisma (not known for a moment after login).
 function IconStack.IsInPrisma()
     return GetGuildInfo("player") == PRISMA_GUILD
 end
 
-local function ShowsLogo()
-    return ns.db.discSymbols == "prisma" and IconStack.IsInPrisma()
+-- An image from texture's part (left, right, top, bottom), sized and trimmed as kind says.
+local function MakeImage(texture, left, right, top, bottom, kind)
+    local trimX, trimY = (right - left) * kind.trim, (bottom - top) * kind.trim
+    return {
+        texture = texture, coords = { left + trimX, right - trimX, top + trimY, bottom - trimY },
+        fillsBorder = true, isRound = true, isMasked = true, isSquare = true,
+    }
 end
 
--- The three discs' glyphs, for arrangement.
-local function GetGlyphs(arrangement)
+-- An image from an atlas: its texture file and part, which can be trimmed (SetAtlas can't); or
+-- nil if the game doesn't have it.
+local function MakeAtlasImage(atlas, kind)
+    local info = atlas and C_Texture.GetAtlasInfo(atlas)
+    local file = info and (info.file or info.filename)
+    if not file then
+        return nil
+    end
+    return MakeImage(file, info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord, kind)
+end
+
+local function GetClassImage()
     local _, classFile = UnitClass("player")
-    local class = CLASS_GLYPHS[classFile]
-    if ns.db.discSymbols ~= "class" or not class then
-        return ADVENTURE_GLYPHS
-    end
-    local spec = class[1 + (C_SpecializationInfo.GetSpecialization() or 0)]
-    local glyphs, specGlyph = {}, 1
-    for index = 1, 3 do
-        if index == CLASS_DISC[arrangement] or type(spec) ~= "table" then
-            glyphs[index] = class[1]
-        else
-            glyphs[index] = spec[specGlyph]
-            specGlyph = specGlyph + 1
-        end
-    end
-    return glyphs
+    return MakeAtlasImage(GetClassAtlas(classFile), EMBLEM_IMAGE)
 end
--- The colour settings (ns.db.discColors): the three discs' colours, a little different from each
--- other so they stand apart where they overlap, and the glyphs' colour. "class" is made from the
--- player's class colour (see GetClassPalette).
-local PALETTES = {
-    -- Muted teal, plum and clay (not gold, which the border is), with cream glyphs.
-    colored = {
-        discs = { CreateColor(0.33, 0.47, 0.46, 1), CreateColor(0.42, 0.38, 0.5, 1), CreateColor(0.55, 0.41, 0.33, 1) },
-        glyph = CreateColor(1, 0.95, 0.83, 1),
-    },
-    silver = {
-        discs = { CreateColor(0.8, 0.8, 0.83, 1), CreateColor(0.68, 0.68, 0.72, 1), CreateColor(0.57, 0.57, 0.61, 1) },
-        glyph = CreateColor(0.16, 0.16, 0.18, 1),
-    },
-    gold = {
-        discs = { CreateColor(0.96, 0.78, 0.33, 1), CreateColor(0.86, 0.66, 0.24, 1), CreateColor(0.76, 0.56, 0.18, 1) },
-        glyph = CreateColor(0.27, 0.17, 0.06, 1),
-    },
-    bronze = {
-        discs = { CreateColor(0.78, 0.53, 0.33, 1), CreateColor(0.68, 0.45, 0.27, 1), CreateColor(0.58, 0.38, 0.22, 1) },
-        glyph = CreateColor(1, 0.95, 0.83, 1),
-    },
-}
 
--- A disc's size, as a share of the button's (its smaller side), the same on every launcher; and
--- how much bigger it gets spread (hovered or open).
-local DISC_SHARE = 0.32
-local SPREAD_GROWTH = 0.15
--- For each arrangement: where the discs' middles are at rest and spread, in disc sizes from the
--- stack's middle (y up); and the order they're drawn in, back to front. Even spread and grown, a
--- cluster stays within 1.25 disc sizes of its middle, and a row within 1.33 to each side.
-local ARRANGEMENTS = {
-    cluster = {
-        rest = { { 0, 0.4 }, { -0.45, -0.29 }, { 0.45, -0.29 } },
-        spread = { { 0, 0.52 }, { -0.57, -0.36 }, { 0.57, -0.36 } },
-        order = { 1, 2, 3 },
-    },
-    row = {
-        rest = { { -0.61, 0 }, { 0, 0 }, { 0.61, 0 } },
-        spread = { { -0.75, 0 }, { 0, 0 }, { 0.75, 0 } },
-        -- The middle one in front.
-        order = { 1, 3, 2 },
-    },
-}
-
--- Three shades of the player's (quiet) class colour, with dark glyphs on a light colour and cream
--- ones on a dark colour.
-local SHADES = { 1.1, 0.92, 0.76 }
-local function GetClassPalette()
-    local r, g, b = Theme.GetQuietClassColor():GetRGB()
-    local discs = {}
-    for index, shade in ipairs(SHADES) do
-        discs[index] = CreateColor(math.min(1, r * shade), math.min(1, g * shade), math.min(1, b * shade), 1)
+-- The spec's icon; without a spec (a new character), the class's.
+local function GetSpecImage()
+    local index = C_SpecializationInfo.GetSpecialization()
+    local icon = index and select(4, C_SpecializationInfo.GetSpecializationInfo(index))
+    if not icon then
+        return GetClassImage()
     end
-    local isLight = 0.3 * r + 0.59 * g + 0.11 * b > 0.6
-    return { discs = discs, glyph = isLight and PALETTES.gold.glyph or PALETTES.colored.glyph }
+    return MakeImage(icon, 0, 1, 0, 1, SPEC_IMAGE)
+end
+
+-- The active hero talent tree's emblem; without one (below the level for it), the spec's icon.
+local function GetHeroImage()
+    local subTreeID = C_ClassTalents.GetActiveHeroTalentSpec()
+    local configID = C_ClassTalents.GetActiveConfigID()
+    local info = subTreeID and configID and C_Traits.GetSubTreeInfo(configID, subTreeID)
+    return MakeAtlasImage(info and info.iconElementID, EMBLEM_IMAGE) or GetSpecImage()
+end
+
+local IMAGES = { classImage = GetClassImage, specImage = GetSpecImage, heroImage = GetHeroImage }
+
+-- The logo or image shown: Satellite's logo, unless the player chose another (Prisma's, while
+-- they're in the guild).
+local function GetLogo()
+    local symbols = ns.db.discSymbols
+    if symbols == "prisma" and IconStack.IsInPrisma() then
+        return LOGOS.prisma
+    end
+    -- An image the game doesn't have shows Satellite's logo.
+    return IMAGES[symbols] and IMAGES[symbols]() or LOGOS.satellite
+end
+
+-- Whether one of the player's images shows, in its colours (ns.db.imageColors).
+function IconStack.ShowsImage()
+    return GetLogo().fillsBorder == true
+end
+
+-- What the launcher shows, to tell when it changed (e.g. another hero talent tree, which may be
+-- on the same texture as the last).
+function IconStack.GetSymbolKey()
+    local logo = GetLogo()
+    return format("%s %.4f %.4f", tostring(logo.texture), logo.coords[1], logo.coords[3])
+end
+
+-- Moving textures (the logo grows, its buttons turn) aren't snapped to whole pixels: snapped,
+-- each steps on its own, and an outline anchored around a texture flickers between one pixel and
+-- two.
+local function KeepOffPixelGrid(texture)
+    texture:SetSnapToPixelGrid(false)
+    texture:SetTexelSnappingBias(0)
 end
 
 -- A stack drawn on frame, around the middle of anchor (frame if nil); Layout gives its size.
 function IconStack.Create(frame, anchor)
-    local stack = {
-        anchor = anchor or frame, arrangement = "cluster", size = 1, x = 0, y = 0,
-        spread = 0, discs = {},
-    }
-    for index = 1, #ADVENTURE_GLYPHS do
-        local function AddTexture(file)
-            local texture = frame:CreateTexture(nil, "ARTWORK")
-            texture:SetTexture(file)
-            return texture
-        end
-        local disc = AddTexture(Theme.DISC)
-        local outline = AddTexture(Theme.DISC)
-        outline:SetVertexColor(Theme.OUTLINE:GetRGBA())
-        outline:SetPoint("TOPLEFT", disc, "TOPLEFT", -1.5, 1.5)
-        outline:SetPoint("BOTTOMRIGHT", disc, "BOTTOMRIGHT", 1.5, -1.5)
-        local glyph = AddTexture(ns.MEDIA .. "Glyph" .. ADVENTURE_GLYPHS[index])
-        glyph:SetPoint("CENTER", disc)
-        stack.discs[index] = { disc = disc, outline = outline, glyph = glyph }
-    end
-    stack.logo = frame:CreateTexture(nil, "ARTWORK", nil, 7)
-    stack.logo:SetTexture(LOGO)
-    stack.logo:SetTexCoord(unpack(LOGO_COORDS))
-    stack.logo:Hide()
+    local stack = { anchor = anchor or frame, x = 0, y = 0, spread = 0, angle = 0, isMasked = false }
+    stack.logo = frame:CreateTexture(nil, "ARTWORK", nil, 6)
+    KeepOffPixelGrid(stack.logo)
+    -- Round images: a dark ring around them, and the square ones cut round.
+    stack.logoOutline = frame:CreateTexture(nil, "ARTWORK", nil, 5)
+    stack.logoOutline:SetTexture(Theme.DISC)
+    stack.logoOutline:SetVertexColor(Theme.OUTLINE:GetRGBA())
+    stack.logoOutline:SetPoint("TOPLEFT", stack.logo, "TOPLEFT", -IMAGE_OUTLINE, IMAGE_OUTLINE)
+    stack.logoOutline:SetPoint("BOTTOMRIGHT", stack.logo, "BOTTOMRIGHT", IMAGE_OUTLINE, -IMAGE_OUTLINE)
+    KeepOffPixelGrid(stack.logoOutline)
+    stack.logoOutline:Hide()
+    stack.logoMask = frame:CreateMaskTexture()
+    stack.logoMask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    stack.logoMask:SetAllPoints(stack.logo)
+    stack.orbiter = frame:CreateTexture(nil, "ARTWORK", nil, 7)
+    stack.orbiter:SetAllPoints(stack.logo)
+    KeepOffPixelGrid(stack.orbiter)
+    stack.orbiter:Hide()
     return stack
 end
 
 local function Place(stack)
-    local t = stack.spread
-    -- Orbiting (see SetSpread): the cluster turned around its middle; a row doesn't turn.
-    local angle = stack.arrangement == "cluster" and stack.angle or 0
-    local cos, sin = math.cos(angle), math.sin(angle)
-    if stack.logo:IsShown() then
-        -- The logo grows a little, as the discs do.
-        local height = stack.buttonSize * LOGO_SHARE * (1 + LOGO_GROWTH * t)
-        local width = height * (LOGO_COORDS[2] - LOGO_COORDS[1]) / (LOGO_COORDS[4] - LOGO_COORDS[3])
-        stack.logo:SetSize(width, height)
-        stack.logo:ClearAllPoints()
-        stack.logo:SetPoint("CENTER", stack.anchor, "CENTER", stack.x, stack.y)
-        return
+    local logo = stack.logoInfo
+    -- The logo grows a little; an image fills the border and stays.
+    local coords = logo.coords
+    local height
+    if logo.fillsBorder then
+        height = stack.buttonSize - 2 * (IMAGE_BORDER + IMAGE_OUTLINE + IMAGE_GAP)
+    else
+        height = stack.buttonSize * logo.share * (1 + LOGO_GROWTH * stack.spread)
     end
-    local layout = ARRANGEMENTS[stack.arrangement]
-    local size = stack.size
-    local discSize = size * (1 + SPREAD_GROWTH * t)
-    for index, entry in ipairs(stack.discs) do
-        entry.disc:SetSize(discSize, discSize)
-        entry.glyph:SetSize(discSize * GLYPH_SHARE, discSize * GLYPH_SHARE)
-        local rest, spread = layout.rest[index], layout.spread[index]
-        local x = rest[1] + (spread[1] - rest[1]) * t
-        local y = rest[2] + (spread[2] - rest[2]) * t
-        x, y = x * cos - y * sin, x * sin + y * cos
-        entry.disc:ClearAllPoints()
-        entry.disc:SetPoint("CENTER", stack.anchor, "CENTER", stack.x + x * size, stack.y + y * size)
+    local width = logo.isSquare and height or height * (coords[2] - coords[1]) / (coords[4] - coords[3])
+    stack.logo:SetSize(width, height)
+    stack.logo:ClearAllPoints()
+    stack.logo:SetPoint("CENTER", stack.anchor, "CENTER", stack.x, stack.y)
+    -- Its buttons go round its orbit, square round the middle.
+    if logo.orbiter then
+        stack.orbiter:SetRotation(stack.angle)
     end
 end
 
--- Sizes the stack for a button buttonSize across (its smaller side): arrangement ("cluster" or
--- "row"), and its middle x, y from the anchor's middle (0 if nil).
-function IconStack.Layout(stack, arrangement, buttonSize, x, y)
-    local discSize = buttonSize * DISC_SHARE
-    stack.arrangement, stack.size, stack.x, stack.y = arrangement, discSize, x or 0, y or 0
-    stack.buttonSize = buttonSize
-    local showsLogo = ShowsLogo()
-    stack.logo:SetShown(showsLogo)
-    for _, entry in ipairs(stack.discs) do
-        entry.disc:SetShown(not showsLogo)
-        entry.outline:SetShown(not showsLogo)
-        entry.glyph:SetShown(not showsLogo)
+-- Sizes the stack for a button buttonSize across (its smaller side), with its middle x, y from the
+-- anchor's middle (0 if nil).
+function IconStack.Layout(stack, buttonSize, x, y)
+    stack.buttonSize, stack.x, stack.y = buttonSize, x or 0, y or 0
+    -- Found once here, not each frame of the animation (see Place).
+    local logo = GetLogo()
+    stack.logoInfo = logo
+    stack.orbiter:SetShown(logo.orbiter ~= nil)
+    stack.logoOutline:SetShown(logo.isRound == true)
+    local isMasked = logo.isMasked == true
+    if isMasked ~= stack.isMasked then
+        stack.isMasked = isMasked
+        if isMasked then
+            stack.logo:AddMaskTexture(stack.logoMask)
+        else
+            stack.logo:RemoveMaskTexture(stack.logoMask)
+        end
     end
-    local layout = ARRANGEMENTS[arrangement]
-    local palette = ns.db.discColors == "class" and GetClassPalette()
-        or PALETTES[ns.db.discColors] or PALETTES.colored
-    local glyphs = GetGlyphs(arrangement)
-    for index, entry in ipairs(stack.discs) do
-        entry.disc:SetVertexColor(palette.discs[index]:GetRGBA())
-        entry.glyph:SetTexture(ns.MEDIA .. "Glyph" .. glyphs[index])
-        entry.glyph:SetVertexColor(palette.glyph:GetRGBA())
-        -- Back to front, each disc with its outline under it and its glyph over it.
-        local subLevel = (layout.order[index] - 1) * 3
-        entry.outline:SetDrawLayer("ARTWORK", subLevel - 1)
-        entry.disc:SetDrawLayer("ARTWORK", subLevel)
-        entry.glyph:SetDrawLayer("ARTWORK", subLevel + 1)
+    stack.logo:SetTexture(logo.texture)
+    stack.logo:SetTexCoord(unpack(logo.coords))
+    local color = logo.isTinted and Theme.GetAccentColors() or WHITE_FONT_COLOR
+    -- An image in grey, tinted or not, as set.
+    local tint = logo.fillsBorder and IMAGE_TINTS[ns.db.imageColors] or nil
+    stack.logo:SetDesaturated(tint ~= nil)
+    color = tint or color
+    stack.logo:SetVertexColor(color:GetRGB())
+    if logo.orbiter then
+        stack.orbiter:SetTexture(logo.orbiter)
+        stack.orbiter:SetVertexColor(color:GetRGB())
     end
     Place(stack)
 end
 
 -- From not spread (0) to spread (1), and turned by angle (radians, counterclockwise; 0 if nil)
--- while the discs orbit.
+-- while it orbits.
 function IconStack.SetSpread(stack, t, angle)
     stack.spread, stack.angle = t, angle or 0
     Place(stack)

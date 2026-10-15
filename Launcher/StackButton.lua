@@ -1,9 +1,9 @@
 local _, ns = ...
 
--- What the minimap button, circle and square launchers share inside their own shapes: the stack
--- of coloured discs (see IconStack) and a gold chevron beside the button, on the side the menu
--- opens, pointing that way. Hovered, the discs spread and orbit and the chevron nudges out; open,
--- the discs stay spread and the chevron points back. A pulse bounces the discs out and back.
+-- What the minimap button, circle and square launchers share inside their own shapes: the logo
+-- (see IconStack) and a gold chevron beside the button, on the side the menu opens, pointing that
+-- way. Hovered, the logo grows and its buttons orbit and the chevron nudges out;
+-- open, the logo stays grown and the chevron points back. A pulse makes the logo grow and settle.
 local StackButton = {}
 ns.StackButton = StackButton
 
@@ -14,7 +14,7 @@ local Theme = ns.Theme
 local CHEVRON_WIDTH, CHEVRON_HEIGHT, CHEVRON_GAP, CHEVRON_NUDGE = 7, 12, 3, 2
 -- Seconds to go from not hovered to hovered.
 local HOVER_TIME = 0.15
--- While hovered, the discs orbit their middle this fast (radians a second: a turn in 6 seconds);
+-- While hovered, the logo's buttons orbit its middle this fast (radians a second: a turn in 6 seconds);
 -- after, they turn back the short way at this speed.
 local ORBIT_SPEED = 2 * math.pi / 6
 local UNWIND_SPEED = 4
@@ -92,7 +92,7 @@ end
 
 -- Runs every frame while it's animating: colours only change when it lights up or goes back.
 function Methods:Draw()
-    -- A pulse spreads the discs and lets them go back, once.
+    -- A pulse grows the logo and lets it go back, once.
     local pulse = self.pulseTime and math.sin(math.pi * self.pulseTime / PULSE_TIME) or 0
     ns.IconStack.SetSpread(self.stack, math.max(self.hover, self.progress, pulse), self.angle)
     local isLit = self.hover > 0.5
@@ -121,14 +121,13 @@ function Methods:Draw()
 end
 
 -- After the button's size or place changed: the menu opens toward direction ("LEFT", "RIGHT",
--- "UP" or "DOWN"), and the stack's arrangement, the button's size and the stack's place (see
--- IconStack.Layout).
-function Methods:Layout(direction, arrangement, buttonSize, x, y)
+-- "UP" or "DOWN"), and the button's size and the logo's place (see IconStack.Layout).
+function Methods:Layout(direction, buttonSize, x, y)
     self.direction = direction
     -- The border colour may have changed: the next Draw colours everything again.
     self.color, self.hoverColor = Theme.GetAccentColors()
     self.isLit = nil
-    ns.IconStack.Layout(self.stack, arrangement, buttonSize, x, y)
+    ns.IconStack.Layout(self.stack, buttonSize, x, y)
     self:Draw()
 end
 
@@ -147,7 +146,7 @@ function Methods:SetHovered(isHovered)
     self.animator:Show()
 end
 
--- Bounces the discs out and back, to show something new (see Launcher.Pulse).
+-- Grows the logo and lets it settle, to show something new (see Launcher.Pulse).
 function Methods:Pulse()
     self.pulseTime = 0
     self.animator:Show()

@@ -14,13 +14,27 @@ local LibDBIcon = LibStub("LibDBIcon-1.0")
 Broker.LAUNCHER = "launcher"
 Broker.DATA_SOURCE = "data source"
 
+-- The object's label; without one, a launcher's text (e.g. Plumber's PlumberLandingButton says
+-- "Expansion Summary"), which data sources fill with their data; or its name.
+local function Plain(text)
+    if type(text) == "string" then
+        text = strtrim(C_StringUtil.StripHyperlinks(text))
+        return text ~= "" and text or nil
+    end
+    return nil
+end
+
+function Broker.GetLabel(name, dataObject)
+    return Plain(dataObject.label) or (dataObject.type == Broker.LAUNCHER and Plain(dataObject.text)) or name
+end
+
 -- Adds the object to Satellite's buttons (again, if it was removed).
 function Broker.Collect(name, dataObject)
     ns.Buttons.Add({
         key = "ldb:" .. name,
         source = "ldb",
         name = name,
-        label = dataObject.label or name,
+        label = Broker.GetLabel(name, dataObject),
         type = dataObject.type,
         dataObject = dataObject,
     })

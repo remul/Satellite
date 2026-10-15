@@ -158,9 +158,20 @@ function Buttons.GetLauncherButtons()
     return list
 end
 
--- Whether the button with key is hidden without the player saying (see Handmade.IsHiddenByDefault).
+-- Buttons out of the menu until the player ticks them: [key] = true.
+local OUT_OF_MENU = {
+    -- Plumber's expansion summary: its own button stays on the minimap (see Handmade), as
+    -- Blizzard's expansion button does (see Collectors/Blizzard.lua).
+    ["ldb:PlumberLandingButton"] = true,
+}
+
+-- Whether the button with key is hidden without the player saying (see also
+-- Handmade.IsHiddenByDefault).
 local function IsHiddenByDefault(key)
     local button = buttons[key]
+    if OUT_OF_MENU[key] then
+        return true
+    end
     return button ~= nil and button.source == "frame" and ns.Handmade.IsHiddenByDefault(button)
 end
 

@@ -71,7 +71,7 @@ end
 local function Create()
     bar = CreateFrame("Button", "SatelliteSideBar", UIParent)
     bar:SetFrameStrata(Theme.STRATA)
-    bar:SetFrameLevel(10)
+    bar:SetFrameLevel(Theme.LEVEL)
     local railFill
     railFill, bar.border = AddBox(bar, RAIL_FILL, RAIL_BORDER, RAIL_MARGIN)
     railFill:SetGradient("VERTICAL", RAIL_FILL_BOTTOM, RAIL_FILL_TOP)
@@ -141,6 +141,9 @@ local function Place()
     railLength = math.max(MIN_RAIL_LENGTH * scale, menuHeight)
     bar:SetSize(vertical and thickness or railLength, vertical and railLength or thickness)
     tab:SetSize(vertical and tabThickness or tabLength, vertical and tabLength or tabThickness)
+    -- On the screen, however long the rail (the place may come from the circle or square).
+    local room = ((vertical and UIParent:GetHeight() or UIParent:GetWidth()) - railLength) / 2
+    offset = math.max(-room, math.min(room, offset))
     bar:ClearAllPoints()
     bar:SetPoint(side, UIParent, side, vertical and 0 or offset, vertical and offset or 0)
 
@@ -159,7 +162,7 @@ function Style:Refresh()
     direction = inward.direction
     local x = direction == "LEFT" and -MENU_GAP or direction == "RIGHT" and MENU_GAP or 0
     local y = direction == "DOWN" and -MENU_GAP or direction == "UP" and MENU_GAP or 0
-    ns.Menu.SetFrameLevel(bar:GetFrameLevel() + 4)
+    ns.Menu.SetFrameLevel(bar:GetFrameLevel() + 4, Theme.MENU_STRATA)
     ns.Menu.Place(bar, tab, inward.point, x, y, direction)
 end
 
@@ -197,23 +200,10 @@ local function FollowCursor()
     local scale = UIParent:GetEffectiveScale()
     local x, y = GetCursorPosition()
     x, y = x / scale, y / scale
-    local width, height = UIParent:GetWidth(), UIParent:GetHeight()
-    local distances = { LEFT = x, RIGHT = width - x, BOTTOM = y, TOP = height - y }
-    local side = "LEFT"
-    for edge, distance in pairs(distances) do
-        if distance < distances[side] then
-            side = edge
-        end
-    end
-    local along, room
-    if IsVertical(side) then
-        along, room = y - height / 2, (height - railLength) / 2
-    else
-        along, room = x - width / 2, (width - railLength) / 2
-    end
+    local side, along = ns.Launcher.GetNearestEdge(x, y)
+    local room = ((IsVertical(side) and UIParent:GetHeight() or UIParent:GetWidth()) - railLength) / 2
     local isNewSide = side ~= ns.db.sideBar.side
-    ns.db.sideBar.side = side
-    ns.db.sideBar.offset = math.max(-room, math.min(room, along))
+    ns.Launcher.SetSideBarPosition(side, math.max(-room, math.min(room, along)))
     -- On another edge, the menu opens another way too.
     if isNewSide then
         Style:Refresh()

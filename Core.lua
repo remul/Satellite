@@ -21,11 +21,13 @@ local DEFAULTS = {
     -- "sideBar" or "alwaysOpen".
     style = "satellite",
     -- Where the player dragged each style's launcher to, missing while it's in its
-    -- default place: [style] = { x, y } (its center from the screen's bottom left), { edge,
-    -- offset } (circle and square docked on an edge), or { degrees } (the satellite on the ring).
+    -- default place: [style] = { x, y } (its center from the screen's bottom left), or { degrees }
+    -- (the satellite on the ring); the circle and square share shape = { x, y } or { edge, offset }
+    -- (docked on an edge).
     positions = {},
     -- The side bar's edge of the screen ("LEFT", "RIGHT", "TOP" or "BOTTOM") and place along it
-    -- (from the middle).
+    -- (from the middle); it follows the circle and square, and they follow it (see
+    -- Launcher.SetShapePosition).
     sideBar = { side = "RIGHT", offset = 0 },
     -- Put the launcher's arrow in the place of the minimap's west compass arrow (see
     -- Launcher/Compass.lua), instead of beside it.
@@ -33,16 +35,16 @@ local DEFAULTS = {
     -- Which way the circle's and square's menu opens while they're not docked on an edge: "AUTO"
     -- (toward the middle of the screen), "LEFT", "RIGHT", "UP" or "DOWN".
     openDirection = "AUTO",
-    -- The colours of the discs on the minimap button, circle and square (see IconStack):
-    -- "colored", "silver", "gold", "bronze" or "class".
-    discColors = "gold",
+    -- The colours of the player's class, spec or hero talent image (see IconStack): "full" (its
+    -- own), "gray", or tinted "gold", "silver" or "bronze".
+    imageColors = "full",
     -- The border colour of the minimap button, circle and square, and their chevron (see
     -- Theme.GetAccentColors): "gold", "silver", "bronze" or "class".
     borderColor = "gold",
-    -- The glyphs on those discs: "adventure" (a dragon, a potion and a sword) or "class" (the
-    -- player's class and spec); or "prisma", the guild Prisma's logo instead of the discs, for its
-    -- members (see IconStack).
-    discSymbols = "adventure",
+    -- What's on the minimap button, circle and square (see IconStack): "satellite" (Satellite's
+    -- logo), "classImage", "specImage" or "heroImage" (the player's class, spec or hero talent
+    -- image), or "prisma" (the guild Prisma's logo, for its members).
+    discSymbols = "satellite",
     -- How many buttons go down each column of the menu before the next column starts; 0 lets
     -- Satellite choose (rows for few buttons, more as they grow).
     menuRows = 0,
@@ -66,10 +68,11 @@ local DEFAULTS = {
     buttonShape = "circle",
     -- Close the menu after a left-click on one of its buttons.
     closeOnClick = true,
-    -- Open the menu when the mouse rests on the launcher, and close it a moment after the mouse
-    -- left the launcher and the menu (see Launcher.lua).
+    -- Open the menu when the mouse rests on the launcher.
     openOnHover = false,
-    closeOnLeave = false,
+    -- When the menu closes by itself (see Launcher.lua): "click" (after a click anywhere else) or
+    -- "leave" (a moment after the mouse left the launcher and the menu).
+    closeMode = "click",
     -- A dot on the launcher when an addon changed its icon since the menu was last opened (see
     -- Launcher/Alert.lua).
     showAlerts = true,

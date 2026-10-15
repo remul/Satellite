@@ -23,9 +23,13 @@ Theme.OUTLINE = CreateColor(0.05, 0.05, 0.05, 1)
 Theme.SILVER = CreateColor(0.62, 0.62, 0.64, 1)
 Theme.GOLD = CreateColor(0.95, 0.76, 0.3, 1)
 Theme.FILL = CreateColor(0.15, 0.105, 0.06, 0.95)
--- The strata of the launchers you can put anywhere (and so their menu): over the action bars and
--- unit frames, under dialogs and tooltips.
-Theme.STRATA = "HIGH"
+-- The strata and frame level of the launchers you can put anywhere: with the minimap and unit
+-- frames (over them), under the action bars and bags. Their menu, once open, goes over all of
+-- those, under dialogs and tooltips (see Menu.SetFrameLevel); the always-open menu, which is the
+-- launcher, stays in the launcher's.
+Theme.STRATA = "LOW"
+Theme.LEVEL = 100
+Theme.MENU_STRATA = "HIGH"
 
 -- While hovered, things light up.
 Theme.GOLD_HOVER = CreateColor(1, 0.88, 0.5, 1)

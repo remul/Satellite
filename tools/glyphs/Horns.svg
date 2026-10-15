@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- Demon Hunter: a horned demon's head. -->
-  <path d="M22,34 C12,30 6,20 8,4 C14,16 20,22 28,26 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M42,34 C52,30 58,20 56,4 C50,16 44,22 36,26 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32,22 C44,22 50,32 48,44 C46,54 40,60 32,60 C24,60 18,54 16,44 C14,32 20,22 32,22 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M22,38 L29,42 L22,44 Z M42,38 L35,42 L42,44 Z" fill="#000000"/>
-</svg>

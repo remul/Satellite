@@ -1,8 +1,8 @@
 local _, ns = ...
 
 -- The minimap button style (the default): a round button on the minimap's ring (or its side, on a
--- square minimap), where Blizzard puts its own buttons (like the expansion button), with a stack of coloured discs and a gold
--- chevron (see StackButton). Click it and the menu slides out beside it, away from the minimap;
+-- square minimap), where Blizzard puts its own buttons (like the expansion button), with the logo
+-- and a gold chevron (see StackButton). Click it and the menu slides out beside it, away from the minimap;
 -- drag it around the ring (when unlocked, or with Shift).
 local Theme = ns.Theme
 local Style = { isMovable = true }
@@ -93,12 +93,12 @@ function Style:Refresh()
     button:SetPoint("CENTER", Minimap, "CENTER", ns.Launcher.GetMinimapEdgePoint(GetDegrees(), RING_SHARE))
     UpdateFrameLevels()
     local direction = GetMenuDirection()
-    opener:Layout(direction, "cluster", size)
+    opener:Layout(direction, size)
     local reach = opener:GetMenuReach() + MENU_GAP
     ns.Menu.Place(frame, button, "CENTER", direction == "LEFT" and -reach or reach, 0, direction)
 end
 
--- A short bounce of the discs, to show a new button (see Launcher.Pulse).
+-- A short pop of the logo, to show a new button (see Launcher.Pulse).
 function Style:Pulse()
     opener:Pulse()
 end
@@ -117,18 +117,26 @@ function Style:SetHovered(isHovered)
     opener:SetHovered(isHovered)
 end
 
--- While dragged, it goes round the ring (or the square's sides) after the cursor.
-local function FollowCursor()
+-- While dragged, it goes round the ring (or the square's sides) after the cursor, keeping the
+-- angle between them it had when grabbed, so it doesn't jump.
+local grabDegrees = 0
+
+-- The cursor's angle round the minimap's middle, in degrees from east (counterclockwise).
+local function GetCursorDegrees()
     local scale = Minimap:GetEffectiveScale()
     local x, y = GetCursorPosition()
     local centerX, centerY = Minimap:GetCenter()
-    local degrees = math.deg(math.atan2(y / scale - centerY, x / scale - centerX))
-    ns.db.positions.satellite = { degrees = degrees }
+    return math.deg(math.atan2(y / scale - centerY, x / scale - centerX))
+end
+
+local function FollowCursor()
+    ns.db.positions.satellite = { degrees = (GetCursorDegrees() + grabDegrees) % 360 }
     Style:Refresh()
 end
 
 function Style:OnDragStart()
     Style.isDragging = true
+    grabDegrees = GetDegrees() - GetCursorDegrees()
     button:SetScript("OnUpdate", FollowCursor)
 end
 

@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- An eye (Shadow, Affliction, Devourer). -->
-  <path d="M3,32 C14,14 50,14 61,32 C50,50 14,50 3,32 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="32" cy="32" r="12" fill="#000000"/><circle cx="27.5" cy="27.5" r="3.5" fill="#ffffff"/>
-</svg>

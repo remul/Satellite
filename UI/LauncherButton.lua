@@ -23,10 +23,11 @@ local ROW_HIGHLIGHT = CreateColor(1, 0.82, 0.3, 0.12)
 -- The menu's own button shapes (ns.db.buttonShape; "minimap" is Blizzard's minimap button art):
 -- each one's texture (also its icon's mask), its size and its icon's as shares of the button's
 -- (a circle or square fills more of it than a diamond, so they're drawn smaller to look alike),
--- and how far its outline reaches out and its fill in (its border, in the border colour, between
--- them). Diamonds have thicker edges, as their sides run slanted.
+-- plus a few pixels more for the icon (iconExtra; a circle's round cut takes more of it), and how
+-- far its outline reaches out and its fill in (its border, in the border colour, between them).
+-- Diamonds have thicker edges, as their sides run slanted.
 local SHAPES = {
-    circle = { texture = "DISC", size = 0.88, icon = 0.55, outline = 1.5, inset = 1.5 },
+    circle = { texture = "DISC", size = 0.88, icon = 0.55, iconExtra = 2, outline = 1.5, inset = 1.5 },
     square = { texture = "BAR_FILL", size = 0.84, icon = 0.55, outline = 1.5, inset = 1.5 },
     diamond = { texture = "DIAMOND", size = 1, icon = 0.5, outline = 2, inset = 2.25 },
 }
@@ -354,7 +355,8 @@ local function SetShape(self, shape, size)
         self.icon:AddMaskTexture(self.iconMask)
         self.isMasked = true
     end
-    self.icon:SetSize(size * info.icon, size * info.icon)
+    local iconSize = size * info.icon + (info.iconExtra or 0)
+    self.icon:SetSize(iconSize, iconSize)
 end
 
 function LauncherButton.SetLook(self, mode, size, width)

@@ -213,20 +213,32 @@ function Handmade.Attach(button, menuButton)
     end
 end
 
--- Whether the addon also has a LibDBIcon button (shown or not), from the same addon folder as its
--- icon: then that one is in the menu already.
-local function HasBrokerTwin(button)
+-- The addon's LibDBIcon button (shown or not), from the same addon folder as its icon, by its
+-- object's name and the object; or nil. That one is in the menu already.
+local function GetBrokerTwin(button)
     if not button.addon then
-        return false
+        return nil
     end
     local addon = ns.Compartment.Simplify(button.addon)
-    for _, dataObject in LDB:DataObjectIterator() do
+    for name, dataObject in LDB:DataObjectIterator() do
         if ns.Compartment.GetIconFolder(dataObject.icon) == addon
             and ns.Broker.GetMinimapButton(dataObject) then
-            return true
+            return name, dataObject
         end
     end
-    return false
+    return nil
+end
+
+-- The addon's title, and with a LibDBIcon button too, what that one is called, to tell them
+-- apart and show they're the same: "Plumber (Expansion Summary)".
+local function UpdateLabel(button)
+    local name, dataObject = GetBrokerTwin(button)
+    local twinLabel = name and ns.Broker.GetLabel(name, dataObject)
+    if twinLabel and twinLabel ~= button.title then
+        button.label = format("%s (%s)", button.title, twinLabel)
+    else
+        button.label = button.title
+    end
 end
 
 -- Whether button's frame can go in the menu (see Buttons.IsInLauncher): while the player wants
@@ -241,7 +253,7 @@ end
 -- Whether button stays on the minimap until the player ticks it: when its addon also has a
 -- LibDBIcon button (in the menu already), or swaps its own for one (see STAY_ON_MINIMAP).
 function Handmade.IsHiddenByDefault(button)
-    return STAY_ON_MINIMAP[button.name] == true or HasBrokerTwin(button)
+    return STAY_ON_MINIMAP[button.name] == true or GetBrokerTwin(button) ~= nil
 end
 
 -- Takes the frames that go in the menu, and lets go of the others (also of those whose button
@@ -254,6 +266,7 @@ function Handmade.Update()
     end
     for _, button in ipairs(ns.Buttons.GetAll()) do
         if button.source == "frame" then
+            UpdateLabel(button)
             local isIn = ns.Buttons.IsInLauncher(button) and not ns.Buttons.IsHidden(button.key)
             if isIn and not taken[button.frame] then
                 Take(button)

@@ -115,11 +115,14 @@ local function ScanChildren(parent)
                     if addon == addonName then
                         addon = nil
                     end
+                    local title = GetLabel(name, addon)
                     local button = {
                         key = key,
                         source = "frame",
                         name = name,
-                        label = GetLabel(name, addon),
+                        -- The label is the title, with its LibDBIcon twin's added (see Handmade).
+                        title = title,
+                        label = title,
                         addon = addon,
                         frame = frame,
                     }

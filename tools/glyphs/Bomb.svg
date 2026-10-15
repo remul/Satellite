@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- A bomb with a lit fuse (Survival). -->
-  <path d="M44,18 Q48,8 55,9" fill="none" stroke="#000000" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M44,18 Q48,8 55,9" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M37,15 L45,9 L51,17 L43,23 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="28" cy="38" r="20" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M14,44 C18,52 26,56 34,55 C26,52 20,48 17,40 Z" fill="#000000" opacity="0.35"/><path d="M56,2 L58,7 L63,9 L58,11 L56,16 L54,11 L49,9 L54,7 Z" fill="#ffffff" stroke="#000000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-</svg>

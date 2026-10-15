@@ -49,6 +49,7 @@ local animation -- { from, to, elapsed, duration } of the last animation (the ta
 local direction = "LEFT"
 local onProgress -- function(progress), to move the launcher along
 local frameLevel = 1
+local frameStrata -- nil: the launcher's
 -- isByColumn: the buttons go down each column before the next (with names, or a set number per
 -- column), instead of along each row.
 local layout = {
@@ -97,10 +98,6 @@ local function UpdateSize(count)
     layout.width = math.max(minColumns, columns) * layout.cellX - spacingX + 2 * PADDING
     layout.rows = layout.isByColumn and rows or math.ceil(count / columns)
     panel:SetSize(layout.width, layout.height)
-end
-
-local function IsVertical()
-    return direction == "UP" or direction == "DOWN"
 end
 
 -- "LEFT", "RIGHT", "UP" or "DOWN": the way it opens.
@@ -257,8 +254,8 @@ end
 function Menu.Place(parent, relativeTo, relativePoint, x, y, newDirection)
     direction = newDirection
     holder:SetParent(parent)
-    -- A new parent can change the frame level; keep the style's.
-    Menu.SetFrameLevel(frameLevel)
+    -- A new parent can change the strata and frame level; keep the style's.
+    Menu.SetFrameLevel(frameLevel, frameStrata)
     holder:ClearAllPoints()
     local near = ANCHORS[direction][1]
     local shiftX, shiftY = GetScreenShift(relativeTo, relativePoint, x, y)
@@ -275,9 +272,10 @@ function Menu.GetDistanceToOpen()
     return stepX * rest, stepY * rest
 end
 
--- The menu's frame level; its buttons go 3 above.
-function Menu.SetFrameLevel(level)
-    frameLevel = level
+-- The menu's frame level, and its strata (nil: its launcher's); its buttons go 3 above.
+function Menu.SetFrameLevel(level, strata)
+    frameLevel, frameStrata = level, strata
+    holder:SetFrameStrata(strata or holder:GetParent():GetFrameStrata())
     holder:SetFrameLevel(level)
     panel:SetFrameLevel(level + 1)
 end

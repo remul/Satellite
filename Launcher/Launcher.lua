@@ -62,12 +62,19 @@ local hoverOpenTime, hoverTime, awayTime = 0, 0, 0
 local watcher = CreateFrame("Frame")
 watcher:Hide()
 
+-- Whether the mouse is where frame takes clicks: its hit area, grown or shrunk from its edges
+-- (the compass arrow's is grown; see Arrow.lua).
+local function IsMouseOverHitArea(frame)
+    local left, right, top, bottom = frame:GetHitRectInsets()
+    return frame:IsMouseOver(-top, bottom, left, -right)
+end
+
 local function IsMouseOverLauncher()
     if ns.Menu.IsOpen() and ns.Menu.GetPanel():IsMouseOver() then
         return true
     end
     for _, opener in ipairs(openers) do
-        if opener:IsVisible() and opener:IsMouseOver() then
+        if opener:IsVisible() and IsMouseOverHitArea(opener) then
             return true
         end
     end
@@ -103,7 +110,7 @@ watcher:SetScript("OnUpdate", function(self, elapsed)
         return
     end
     hoverTime = 0
-    if not ns.db.closeOnLeave or current.alwaysOpen then
+    if ns.db.closeMode ~= "leave" or current.alwaysOpen then
         if not isOver then
             self:Hide()
         end
@@ -120,6 +127,19 @@ watcher:SetScript("OnUpdate", function(self, elapsed)
         self:Hide()
     end
 end)
+
+-- A click anywhere else closes the menu (unless it closes when the mouse leaves): not on the
+-- launcher or the menu (a hand-made button's own frame is in it), nor while the settings or an
+-- addon's dropdown are open (clicks in those belong to them).
+local function OnGlobalMouseDown()
+    if ns.db.closeMode ~= "click" or not ns.Menu.IsOpen() or current.alwaysOpen then
+        return
+    end
+    if IsMouseOverLauncher() or ns.Settings.IsShown() or IsAddonMenuOpen() then
+        return
+    end
+    ns.Menu.Close()
+end
 
 function Launcher.Toggle()
     if current.alwaysOpen then
@@ -140,6 +160,28 @@ local function CanMove()
     return current.isMovable and (not ns.db.locked or IsShiftKeyDown())
 end
 
+-- Space between the launcher and its tooltip.
+local TOOLTIP_GAP = 10
+
+-- Beside one of owner's corners, toward the middle of the screen (so it isn't pushed back over
+-- the launcher at an edge), with some space between.
+local function AnchorTooltip(owner)
+    GameTooltip:SetOwner(owner, "ANCHOR_NONE")
+    local x, y = owner:GetCenter()
+    if not x then
+        GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+        return
+    end
+    local scale = owner:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    local isLeft = x * scale > UIParent:GetWidth() / 2
+    local isAbove = y * scale < UIParent:GetHeight() / 2
+    local vertical = isAbove and "BOTTOM" or "TOP"
+    local horizontal = isLeft and "RIGHT" or "LEFT"
+    local ownerPoint = (isAbove and "TOP" or "BOTTOM") .. (isLeft and "LEFT" or "RIGHT")
+    GameTooltip:SetPoint(vertical .. horizontal, owner, ownerPoint,
+        isLeft and -TOOLTIP_GAP or TOOLTIP_GAP, isAbove and TOOLTIP_GAP or -TOOLTIP_GAP)
+end
+
 -- Only while the menu is closed: open, the tooltip would cover it, and the menu shows what it is.
 local function ShowTooltip(owner)
     if ns.Menu.IsOpen() then
@@ -149,7 +191,7 @@ local function ShowTooltip(owner)
         return
     end
     local L = ns.L
-    GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+    AnchorTooltip(owner)
     GameTooltip_SetTitle(GameTooltip, ns.TITLE)
     GameTooltip_AddNormalLine(GameTooltip, L["Click to show your addon buttons."])
     GameTooltip_AddInstructionLine(GameTooltip, L["Right-click for settings."])
@@ -169,6 +211,11 @@ function Launcher.SetupMover(frame, onlyStyle)
     frame:SetScript("OnDragStart", function()
         if (not onlyStyle or current == onlyStyle) and CanMove() then
             GameTooltip:Hide()
+            -- The menu would be in the way while it moves along; it stays open beside the
+            -- settings, which show what the new place looks like.
+            if ns.Menu.IsOpen() and not ns.Settings.IsShown() then
+                ns.Menu.Close()
+            end
             current:OnDragStart()
         end
     end)
@@ -322,10 +369,59 @@ function Launcher.SavePosition(key, frame)
     ns.db.positions[key] = { x = x * scale, y = y * scale }
 end
 
--- Whether a style's launcher is docked on an edge of the screen (the circle and square).
-function Launcher.IsDocked(key)
-    local position = ns.db.positions[key]
+-- Whether the circle and square are docked on an edge of the screen.
+function Launcher.IsShapeDocked()
+    local position = ns.db.positions.shape
     return position ~= nil and position.edge ~= nil
+end
+
+-- How far x, y (in UIParent's units) is from an edge of the screen.
+function Launcher.GetEdgeDistance(edge, x, y)
+    if edge == "LEFT" then
+        return x
+    elseif edge == "RIGHT" then
+        return UIParent:GetWidth() - x
+    elseif edge == "BOTTOM" then
+        return y
+    end
+    return UIParent:GetHeight() - y
+end
+
+local EDGES = { "LEFT", "RIGHT", "BOTTOM", "TOP" }
+
+-- The edge of the screen nearest to x, y (in UIParent's units; the first of them in a corner),
+-- its distance, less halfWidth or halfHeight (a frame's, with x, y its middle; 0 if nil), and how
+-- far along the edge x, y is from its middle: the circle and square dock there, and the side bar
+-- sits there. Runs every frame of a drag, so it makes no tables.
+function Launcher.GetNearestEdge(x, y, halfWidth, halfHeight)
+    local nearest, nearestDistance
+    for _, edge in ipairs(EDGES) do
+        local isVertical = edge == "LEFT" or edge == "RIGHT"
+        local distance = Launcher.GetEdgeDistance(edge, x, y) - ((isVertical and halfWidth or halfHeight) or 0)
+        if not nearestDistance or distance < nearestDistance then
+            nearest, nearestDistance = edge, distance
+        end
+    end
+    local isVertical = nearest == "LEFT" or nearest == "RIGHT"
+    local along = isVertical and y - UIParent:GetHeight() / 2 or x - UIParent:GetWidth() / 2
+    return nearest, along, nearestDistance
+end
+
+-- The circle, square and side bar share their place, so switching between them keeps the
+-- launcher where it is: the circle's and square's (see Shapes) in ns.db.positions.shape, which
+-- the side bar's (ns.db.sideBar) follows, and the other way round.
+function Launcher.SetShapePosition(position)
+    ns.db.positions.shape = position
+    if position.edge then
+        ns.db.sideBar.side, ns.db.sideBar.offset = position.edge, position.offset
+    else
+        ns.db.sideBar.side, ns.db.sideBar.offset = Launcher.GetNearestEdge(position.x, position.y)
+    end
+end
+
+function Launcher.SetSideBarPosition(side, offset)
+    ns.db.sideBar.side, ns.db.sideBar.offset = side, offset
+    ns.db.positions.shape = { edge = side, offset = offset }
 end
 
 -- Puts every launcher back in its default place.
@@ -373,8 +469,18 @@ function Launcher:Setup()
         end
         ns:RegisterEvent("PLAYER_GUILD_UPDATE", OnGuildChanged)
         ns:RegisterEvent("GUILD_ROSTER_UPDATE", OnGuildChanged)
-        -- The class symbols change with the spec (see IconStack).
+        -- The class symbols and images change with the spec, and the hero talent image with the
+        -- talents (see IconStack); talents change often, the image seldom.
         ns:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", Launcher.Refresh)
+        local symbolKey = ns.IconStack.GetSymbolKey()
+        ns:RegisterEvent("TRAIT_CONFIG_UPDATED", function()
+            local key = ns.IconStack.GetSymbolKey()
+            if key ~= symbolKey then
+                symbolKey = key
+                Launcher.Refresh()
+            end
+        end)
+        ns:RegisterEvent("GLOBAL_MOUSE_DOWN", OnGlobalMouseDown)
         Minimap:HookScript("OnSizeChanged", Launcher.Refresh)
         -- Where things fit on the screen changes with the UI scale, the window's size, and the
         -- minimap moved in Edit Mode.

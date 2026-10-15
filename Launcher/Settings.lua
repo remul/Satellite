@@ -9,6 +9,9 @@ local L = ns.L
 local Settings = {}
 ns.Settings = Settings
 
+-- The symbols anyone can choose (see IconStack); Prisma's logo only in the guild.
+local CHOOSABLE_SYMBOLS = { satellite = true, classImage = true, specImage = true, heroImage = true }
+
 local Theme = ns.Theme
 
 -- In interface units: a column's width, the padding, the space between the columns, between rows,
@@ -17,6 +20,8 @@ local COLUMN_WIDTH = 230
 local PADDING = 16
 local COLUMN_GAP = 20
 local ROW_SPACING = 10
+-- The Launcher tab's rows, almost all dropdowns and sliders, get more room between them.
+local TAB_ROW_SPACING = { launcher = 16, behavior = ROW_SPACING }
 local MENU_GAP = 8
 -- The Buttons tab: its list's height, a row's height, and the sort button's width.
 local LIST_HEIGHT = 300
@@ -539,32 +544,39 @@ local function CreatePanel()
         end, function(value)
             ns.db.borderColor = value
         end),
-        -- Prisma's logo, only for the guild's members (see IconStack).
-        discSymbols = CreateDropdown(L["Symbols"], function()
-            local options = { { L["Dragon, potion, sword"], "adventure" }, { L["Your class and spec"], "class" } }
+        -- Satellite's logo, and Prisma's only for the guild's members (see IconStack).
+        discSymbols = CreateDropdown(L["Symbol"], function()
+            local options = {
+                { L["Satellite logo"], "satellite" },
+                { L["Your class image"], "classImage" },
+                { L["Your spec image"], "specImage" },
+                { L["Your hero talent image"], "heroImage" },
+            }
             if ns.IconStack.IsInPrisma() then
                 options[#options + 1] = { "Prisma", "prisma" }
             end
             return options
         end, function()
-            -- Prisma's logo after leaving the guild shows the default symbols (see IconStack).
-            if ns.db.discSymbols == "prisma" and not ns.IconStack.IsInPrisma() then
-                return "adventure"
+            -- Prisma's logo after leaving the guild, or a choice that's gone, shows Satellite's
+            -- (see IconStack).
+            local symbols = ns.db.discSymbols
+            if CHOOSABLE_SYMBOLS[symbols] or (symbols == "prisma" and ns.IconStack.IsInPrisma()) then
+                return symbols
             end
-            return ns.db.discSymbols
+            return "satellite"
         end, function(value)
             ns.db.discSymbols = value
         end),
-        discColors = CreateDropdown(L["Symbol colors"], {
-            { L["Colored"], "colored" },
-            { L["Silver"], "silver" },
+        imageColors = CreateDropdown(L["Image colors"], {
+            { L["Full color"], "full" },
+            { L["Grayscale"], "gray" },
             { L["Gold"], "gold" },
+            { L["Silver"], "silver" },
             { L["Bronze"], "bronze" },
-            { L["Class color"], "class" },
         }, function()
-            return ns.db.discColors
+            return ns.db.imageColors
         end, function(value)
-            ns.db.discColors = value
+            ns.db.imageColors = value
         end),
         replaceCompassArrow = CreateCheckbox(L["Replace the minimap's west arrow"], function()
             return ns.db.replaceCompassArrow
@@ -593,12 +605,18 @@ local function CreatePanel()
         end, function(value)
             ns.db.buttonShape = value
         end),
-        menuRows = CreateSlider(L["Buttons per column"], 0, 12, function()
+        -- A dropdown, not a slider: the menu changes size with each step, and moves the slider
+        -- away from the mouse.
+        menuRows = CreateDropdown(L["Buttons per column"], function()
+            local options = { { L["Auto"], 0 } }
+            for rows = 1, 12 do
+                options[#options + 1] = { format("%d", rows), rows }
+            end
+            return options
+        end, function()
             return ns.db.menuRows
         end, function(value)
             ns.db.menuRows = value
-        end, function(value)
-            return value == 0 and L["Auto"] or format("%d", value)
         end),
         menuLabels = CreateDropdown(L["Show"], {
             { L["Icons"], "icons" },
@@ -621,15 +639,18 @@ local function CreatePanel()
         end, function(value)
             ns.db.openOnHover = value
         end),
-        closeOnLeave = CreateCheckbox(L["Close when the mouse leaves"], function()
-            return ns.db.closeOnLeave
-        end, function(value)
-            ns.db.closeOnLeave = value
-        end),
         closeOnClick = CreateCheckbox(L["Close after clicking a button"], function()
             return ns.db.closeOnClick
         end, function(value)
             ns.db.closeOnClick = value
+        end),
+        closeMode = CreateDropdown(L["Closes"], {
+            { L["When you click elsewhere"], "click" },
+            { L["When the mouse leaves"], "leave" },
+        }, function()
+            return ns.db.closeMode
+        end, function(value)
+            ns.db.closeMode = value
         end),
         openDirection = CreateDropdown(L["Opens toward"], {
             { L["The middle of the screen"], "AUTO" },
@@ -683,8 +704,9 @@ local function GetContentTop()
     return PADDING + panel.title:GetStringHeight() + ROW_SPACING + 4
 end
 
--- Lays out one column of rows ({ row, isShown } pairs) from the top; returns its height.
-local function LayoutColumn(entries, left)
+-- Lays out one column of rows ({ row, isShown } pairs) from the top, spacing apart; returns its
+-- height.
+local function LayoutColumn(entries, left, spacing)
     local y = GetContentTop()
     for _, entry in ipairs(entries) do
         local row, isShown = entry[1], entry[2]
@@ -695,7 +717,7 @@ local function LayoutColumn(entries, left)
             end
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", panel, "TOPLEFT", left, -y)
-            y = y + row:GetHeight() + ROW_SPACING
+            y = y + row:GetHeight() + spacing
         end
     end
     return y
@@ -712,13 +734,13 @@ local function GetColumns(tab)
         -- The Always open style's menu doesn't open or close.
         local canClose = not launcher.alwaysOpen
         -- Docked on an edge, the circle and square open away from it.
-        local hasDirection = (style == "circle" or style == "square") and not ns.Launcher.IsDocked(style)
+        local hasDirection = (style == "circle" or style == "square") and not ns.Launcher.IsShapeDocked()
         columns = {
             {
                 { rows.openingHeader, canClose or hasDirection },
                 { rows.openOnHover, canClose },
+                { rows.closeMode, canClose },
                 { rows.closeOnClick, canClose },
-                { rows.closeOnLeave, canClose },
                 { rows.openDirection, hasDirection },
             },
             {
@@ -732,7 +754,7 @@ local function GetColumns(tab)
         }
     else
         local isArrow = style == "arrow"
-        local hasDiscs = style == "satellite" or style == "circle" or style == "square"
+        local hasSymbol = style == "satellite" or style == "circle" or style == "square"
         columns = {
             {
                 { rows.lookHeader, true },
@@ -740,9 +762,9 @@ local function GetColumns(tab)
                 { rows.scale, not launcher.alwaysOpen },
                 -- The menu's border too, so for every style.
                 { rows.borderColor, true },
-                { rows.discSymbols, hasDiscs },
-                -- Prisma's logo has its own colours.
-                { rows.discColors, hasDiscs and not (ns.db.discSymbols == "prisma" and ns.IconStack.IsInPrisma()) },
+                { rows.discSymbols, hasSymbol },
+                -- A logo has its own colours, or the border's.
+                { rows.imageColors, hasSymbol and ns.IconStack.ShowsImage() },
                 -- A minimap that isn't round has no whole compass to take the arrow from.
                 { rows.replaceCompassArrow, isArrow and ns.Launcher.IsMinimapRound() },
                 { rows.gap, isArrow and not ns.Compass.IsReplaced() },
@@ -760,8 +782,8 @@ local function GetColumns(tab)
     return columns
 end
 
--- How tall the panel is with a tab's columns.
-local function MeasureColumns(columns)
+-- How tall the panel is with a tab's columns, their rows spacing apart.
+local function MeasureColumns(columns, spacing)
     local height = GetContentTop()
     for _, column in ipairs(columns) do
         local y = GetContentTop()
@@ -771,12 +793,12 @@ local function MeasureColumns(columns)
                 if row.Update then
                     row.Update()
                 end
-                y = y + row:GetHeight() + ROW_SPACING
+                y = y + row:GetHeight() + spacing
             end
         end
         height = math.max(height, y)
     end
-    return height - ROW_SPACING + PADDING
+    return height - spacing + PADDING
 end
 
 -- Shows the current tab: the rows that apply to the current style, or the list of buttons. The
@@ -790,7 +812,8 @@ local function UpdatePanel()
         row:Hide()
     end
     panel:SetHeight(math.max(GetContentTop() + page:GetHeight() + PADDING,
-        MeasureColumns(GetColumns("launcher")), MeasureColumns(GetColumns("behavior"))))
+        MeasureColumns(GetColumns("launcher"), TAB_ROW_SPACING.launcher),
+        MeasureColumns(GetColumns("behavior"), TAB_ROW_SPACING.behavior)))
     if currentTab == "buttons" then
         page:ClearAllPoints()
         page:SetPoint("TOPLEFT", PADDING, -GetContentTop())
@@ -806,7 +829,7 @@ local function UpdatePanel()
             hasRows = hasRows or entry[2]
         end
         if hasRows then
-            LayoutColumn(column, left)
+            LayoutColumn(column, left, TAB_ROW_SPACING[currentTab])
             left = left + COLUMN_WIDTH + COLUMN_GAP
         end
     end

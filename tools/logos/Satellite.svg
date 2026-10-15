@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Satellite's symbol from its emblem (Media/Emblem.svg) on its own, without the frame: the
+       minimap with the player arrow and its orbit, centred on the orbit's middle. White with a black
+       outline, tinted in game; the buttons on the orbit are ButtonsOnOrbit.svg, turned while the
+       launcher is hovered (see IconStack). -->
+  <g transform="translate(128 128) scale(0.66) translate(-256 -256)">
+    <circle cx="256" cy="256" r="150" fill="none" stroke="#000000" stroke-width="32"/>
+    <circle cx="256" cy="256" r="93" fill="#000000"/>
+    <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" stroke-width="14"/>
+    <circle cx="256" cy="256" r="84" fill="#ffffff"/>
+    <path d="M256,206 L290,298 L256,276 L222,298 Z" fill="#000000"/>
+  </g>
+</svg>
