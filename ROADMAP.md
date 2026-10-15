@@ -7,33 +7,42 @@ Satellite gathers other addons' minimap buttons into one launcher. The launcher 
 styles; the default is a round button with Satellite's logo on the minimap's ring that slides
 out a menu.
 
-## Collecting buttons
+## Check in game
 
-LibDataBroker objects, the addon compartment, Blizzard's expansion button and hand-made minimap
-buttons are collected (see `Collectors/`); each entry has a stable key, so order and settings
-survive reloads. Still to do:
+Shipped, but so far only checked in code and with simulations outside the game:
 
-- **Hand-made buttons**: check in game with Battle Pet Statistics and the test buttons
-  (`/satellite test buttons`), including their tooltips, right-click menus and icon changes.
-  Check the HereBeDragons pin table (`minimapPins`) against the real library with TomTom or
-  HandyNotes. Plumber's own button starts unticked, on the minimap (`STAY_ON_MINIMAP` in
-  `Collectors/Handmade.lua`), and so does its LibDBIcon button (`OUT_OF_MENU` in `Buttons.lua`).
+- **Symbols**: the class, spec and hero talent images, their size inside the border and the trim
+  of their rims (`EMBLEM_IMAGE`, `SPEC_IMAGE` in `Launcher/IconStack.lua`), the image colours
+  (`IMAGE_TINTS`), and the logo's orbit (no flicker).
+- **Alerts**: BigWigs, LittleWigs and TinyWigs zoning in and out without the dot (`ZONE_DELAY`
+  in `Launcher/Alert.lua`), and the dot's toggle in the Buttons list.
+- **Placing**: docking the circle and square on all four edges and into the corners, the shared
+  place with the side bar, the launcher behind the bags with its menu over them, the tooltip's
+  place, and closing on a click elsewhere or when the mouse leaves.
+- **Hand-made buttons**: Battle Pet Statistics and the test buttons (`/satellite test buttons`),
+  with their tooltips, right-click menus and icon changes; Plumber's buttons and names
+  (`STAY_ON_MINIMAP` in `Collectors/Handmade.lua`, `OUT_OF_MENU` in `Buttons.lua`). Check the
+  HereBeDragons pin table (`minimapPins`) against the real library with TomTom or HandyNotes.
+- **Combat**: the menu, the settings and dragging in combat, and the expansion button's page
+  opening once combat ends (`Blizzard.Click` in `Collectors/Blizzard.lua`).
+- **Compass arrow**: its measures (`COMPASS_TIP_SHARE`, `COMPASS_HALF_HEIGHT_SHARE` in
+  `Launcher/Styles/Arrow.lua`) come from one screenshot; check them at other minimap sizes, and
+  `EAST_NUDGE` on the east side, in place of the east arrow and beside it.
 
 ## Buttons
 
-- Rename single buttons.
 - Blizzard's expansion button: while its original is hidden, its pulse and alerts (renown, new
   content) can't be seen. Show a glow on the menu's copy.
+- A key binding to open and close the menu (`Bindings.xml`).
 
 ## Launcher
 
-- The compass arrow's measures (`COMPASS_TIP_SHARE`, `COMPASS_HALF_HEIGHT_SHARE` in
-  `Launcher/Styles/Arrow.lua`) come from one screenshot; check them at other minimap sizes. On
-  the east side (minimap at the screen's left edge), `EAST_NUDGE` was set by eye; check it there
-  too, in place of the east arrow and beside it.
 - Ideas: the side bar's notches from Blizzard's side panels; art matching the minimap's metal
   border.
 
-## Before release
+## Before release on more sites
 
-- Screenshots for CurseForge.
+- Screenshots for CurseForge: the minimap button with its menu open, the compass arrow, the side
+  bar, the settings panel, and the image symbols.
+- Native speakers to check the translations.
+- Wago and WoWInterface.

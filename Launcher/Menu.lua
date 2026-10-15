@@ -18,10 +18,13 @@ local MIN_COLUMNS, MIN_ROWS = 4, 2
 local function RowsFor(count)
     return count <= 6 and 1 or count <= 16 and 2 or 3
 end
--- With names (ns.db.menuLabels): each name's width beside its button, the space between columns,
--- and the most buttons in a column; the buttons then go down the columns, like a list. With names
--- only, a row's height, the space between rows, and the most rows in a column.
-local LABEL_WIDTH, LABEL_GAP = 110, 6
+-- With names (ns.db.menuLabels): the names' width beside their buttons (as wide as the longest,
+-- between these two; longer ones are cut off), the space between columns, and the most buttons in
+-- a column; the buttons then go down the columns, like a list. With names only, a row's height,
+-- the space between rows, and the most rows in a column.
+local MIN_LABEL_WIDTH, MAX_LABEL_WIDTH, LABEL_GAP = 110, 200, 6
+-- Room around a name in a row of names only (see LauncherButton.SetLook).
+local NAME_ROW_INSETS = 12
 local NAMED_COLUMN_SPACING = 14
 local MAX_NAMED_ROWS = 8
 local NAME_ROW_HEIGHT, NAME_ROW_SPACING = 20, 2
@@ -54,7 +57,12 @@ local frameStrata -- nil: the launcher's
 -- column), instead of along each row.
 local layout = {
     columns = 1, rows = 1, size = 0, cell = 0, cellX = 0, width = 0, height = 0, isByColumn = false,
+    labelWidth = MIN_LABEL_WIDTH,
 }
+-- Measures the names, in the font the buttons' names have (see LauncherButton); the last result,
+-- kept until the buttons change (a new name is a change too, see Buttons.GetChangeCount).
+local measurer
+local measured = {}
 
 local function EaseOut(x)
     return 1 - (1 - x) ^ 3
@@ -66,17 +74,43 @@ end
 -- many down each column, and as many columns as needed. Otherwise rows from RowsFor, as many
 -- columns as needed, and at least MIN_COLUMNS by MIN_ROWS; with names, columns of up to
 -- MAX_NAMED_ROWS (MAX_NAME_ROWS with names only).
-local function UpdateSize(count)
+-- The width the buttons' names need: the longest one's, within MIN_LABEL_WIDTH and
+-- MAX_LABEL_WIDTH.
+local function MeasureLabels(buttons, isNameOnly)
+    local changeCount = ns.Buttons.GetChangeCount()
+    if measured.changeCount == changeCount and measured.isNameOnly == isNameOnly then
+        return measured.width
+    end
+    if not measurer then
+        measurer = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        measurer:Hide()
+    end
+    local widest = 0
+    for _, button in ipairs(buttons) do
+        measurer:SetText(button.label)
+        widest = math.max(widest, measurer:GetUnboundedStringWidth())
+    end
+    -- A pixel more, so the longest isn't cut off by rounding.
+    local width = math.ceil(widest) + 1 + (isNameOnly and NAME_ROW_INSETS or 0)
+    width = math.max(MIN_LABEL_WIDTH, math.min(MAX_LABEL_WIDTH, width))
+    measured.changeCount, measured.isNameOnly, measured.width = changeCount, isNameOnly, width
+    return width
+end
+
+local function UpdateSize(buttons)
+    local count = #buttons
     local labels = ns.db.menuLabels
     local isNameOnly = labels == "names"
     local size = isNameOnly and NAME_ROW_HEIGHT or ns.db.launcher.buttonSize
     local spacingY = isNameOnly and NAME_ROW_SPACING or BUTTON_SPACING
     local cell = size + spacingY
+    local labelWidth = labels ~= "icons" and MeasureLabels(buttons, isNameOnly) or MIN_LABEL_WIDTH
+    layout.labelWidth = labelWidth
     local item, spacingX
     if labels == "both" then
-        item, spacingX = size + LABEL_GAP + LABEL_WIDTH, NAMED_COLUMN_SPACING
+        item, spacingX = size + LABEL_GAP + labelWidth, NAMED_COLUMN_SPACING
     elseif isNameOnly then
-        item, spacingX = LABEL_WIDTH, NAMED_COLUMN_SPACING
+        item, spacingX = labelWidth, NAMED_COLUMN_SPACING
     else
         item, spacingX = size, BUTTON_SPACING
     end
@@ -162,7 +196,7 @@ end
 -- row. Opening, they pop in from the launcher's side outward.
 local function UpdateButtons(withAnimation)
     local buttons = ns.Buttons.GetLauncherButtons()
-    UpdateSize(#buttons)
+    UpdateSize(buttons)
     local keys = {}
     wipe(shownFrames)
     for index, button in ipairs(buttons) do
@@ -172,7 +206,7 @@ local function UpdateButtons(withAnimation)
             column, row = math.floor((index - 1) / layout.rows), (index - 1) % layout.rows
         end
         local buttonFrame = ns.LauncherButton.Get(panel, button)
-        ns.LauncherButton.SetLook(buttonFrame, ns.db.menuLabels, layout.size, LABEL_WIDTH)
+        ns.LauncherButton.SetLook(buttonFrame, ns.db.menuLabels, layout.size, layout.labelWidth)
         buttonFrame:SetFrameLevel(panel:GetFrameLevel() + 2)
         buttonFrame:ClearAllPoints()
         buttonFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING + column * layout.cellX,
@@ -293,12 +327,15 @@ function Menu.Open()
     Animate(1, OPEN_TIME)
 end
 
-function Menu.Close()
+-- Closes the menu, and the settings beside it, unless keepSettings (while the launcher is dragged).
+function Menu.Close(keepSettings)
     if isAlwaysOpen then
         return
     end
     isOpen = false
-    ns.Settings.Hide()
+    if not keepSettings then
+        ns.Settings.Hide()
+    end
     for _, buttonFrame in ipairs(shownFrames) do
         ns.LauncherButton.Disappear(buttonFrame)
     end
@@ -326,7 +363,7 @@ end
 
 -- Sizes the menu for the buttons it shows, without placing them (for the style to place it).
 function Menu.Measure()
-    UpdateSize(#ns.Buttons.GetLauncherButtons())
+    UpdateSize(ns.Buttons.GetLauncherButtons())
 end
 
 -- Redraws after the buttons or settings changed (the border colour too).

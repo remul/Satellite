@@ -81,7 +81,8 @@ local function IsMouseOverLauncher()
     return false
 end
 
--- An addon's dropdown, opened from one of the menu's buttons, needs the menu to stay.
+-- An addon's dropdown, opened from one of the menu's buttons, needs the menu to stay (also see
+-- LauncherButton.AfterClick).
 local function IsAddonMenuOpen()
     local manager = Menu and Menu.GetManager and Menu.GetManager()
     if manager and manager:IsAnyMenuOpen() then
@@ -89,6 +90,7 @@ local function IsAddonMenuOpen()
     end
     return DropDownList1 ~= nil and DropDownList1:IsShown()
 end
+Launcher.IsAddonMenuOpen = IsAddonMenuOpen
 
 -- Runs while the mouse is over the launcher, or the menu is open and closes when it leaves.
 watcher:SetScript("OnUpdate", function(self, elapsed)
@@ -211,10 +213,11 @@ function Launcher.SetupMover(frame, onlyStyle)
     frame:SetScript("OnDragStart", function()
         if (not onlyStyle or current == onlyStyle) and CanMove() then
             GameTooltip:Hide()
-            -- The menu would be in the way while it moves along; it stays open beside the
-            -- settings, which show what the new place looks like.
-            if ns.Menu.IsOpen() and not ns.Settings.IsShown() then
-                ns.Menu.Close()
+            -- The menu would be in the way while it moves along. The settings stay where they
+            -- are, and the menu opens again where it's let go (see Launcher.Refresh).
+            ns.Settings.Detach()
+            if ns.Menu.IsOpen() then
+                ns.Menu.Close(true)
             end
             current:OnDragStart()
         end
@@ -223,6 +226,7 @@ function Launcher.SetupMover(frame, onlyStyle)
         if current.isDragging then
             current:OnDragStop()
             lastDragTime = GetTime()
+            ns.Settings.Attach()
             Launcher.Refresh()
         end
     end)
@@ -419,9 +423,15 @@ function Launcher.SetShapePosition(position)
     end
 end
 
+-- Called every frame of a drag: the shape's place is changed in place while it's docked already.
 function Launcher.SetSideBarPosition(side, offset)
     ns.db.sideBar.side, ns.db.sideBar.offset = side, offset
-    ns.db.positions.shape = { edge = side, offset = offset }
+    local shape = ns.db.positions.shape
+    if shape and shape.edge then
+        shape.edge, shape.offset = side, offset
+    else
+        ns.db.positions.shape = { edge = side, offset = offset }
+    end
 end
 
 -- Puts every launcher back in its default place.

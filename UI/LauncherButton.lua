@@ -169,18 +169,33 @@ local function OnLeave(self)
     end
 end
 
--- After a click on the menu's button (or on a hand-made button's own frame over it, see
--- Handmade): most clicks open something, so the menu closes (a setting). Not on right-click:
--- addons often open a menu there, attached to the button. Nor while the settings are open.
-function LauncherButton.AfterClick(self, mouseButton)
-    if mouseButton == "LeftButton" and ns.db.closeOnClick and not ns.Settings.IsShown() then
-        -- Its tooltip, or the hand-made frame's over it.
-        local owner = GameTooltip:GetOwner()
-        if owner and (owner == self or owner:GetParent() == self) then
-            GameTooltip:Hide()
-        end
-        ns.Menu.Close()
+-- Closes the menu after a click on self, and its tooltip (or the hand-made frame's over it).
+local function CloseAfterClick(self)
+    local owner = GameTooltip:GetOwner()
+    if owner and (owner == self or owner:GetParent() == self) then
+        GameTooltip:Hide()
     end
+    ns.Menu.Close()
+end
+
+-- After a click on the menu's button (or on a hand-made button's own frame over it, see
+-- Handmade): most clicks open something, a window the menu would be in the way of, so the menu
+-- closes (a setting); not while the settings are open. A right-click often opens the addon's
+-- dropdown instead, attached to the button: the menu stays for it. Some addons open theirs a
+-- frame later, so that's looked at then.
+function LauncherButton.AfterClick(self, mouseButton)
+    if not ns.db.closeOnClick or ns.Settings.IsShown() then
+        return
+    end
+    if mouseButton ~= "RightButton" then
+        CloseAfterClick(self)
+        return
+    end
+    C_Timer.After(0, function()
+        if ns.Menu.IsOpen() and not ns.Launcher.IsAddonMenuOpen() and not ns.Settings.IsShown() then
+            CloseAfterClick(self)
+        end
+    end)
 end
 
 -- Passes the click on as the addon's own button would: LibDataBroker's OnClick, the compartment's

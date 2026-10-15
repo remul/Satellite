@@ -64,6 +64,8 @@ local currentTab = "launcher"
 -- (the menu may grow or shrink with it, and the slider being dragged must stay under the mouse),
 -- or once the player dragged it. Until then it follows the menu, which may still be opening.
 local isFixed = false
+-- Whether the player dragged the panel somewhere (it stays there, also after the launcher moved).
+local isPlayerPlaced = false
 
 -- Keeps the panel where it is now on the screen (see isFixed).
 local function FixPlace()
@@ -326,8 +328,41 @@ local function ShowAlertToggleTooltip(button)
     GameTooltip:Show()
 end
 
+-- Renaming a row's button: an edit box in place of its name, made the first time. Enter keeps the
+-- new name, Escape the old one; an empty name gives the button its own back.
+local function StartRename(row)
+    if not row.nameEdit then
+        local edit = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+        edit:SetAutoFocus(false)
+        edit:SetFontObject("GameFontHighlight")
+        edit:SetHeight(20)
+        edit:SetPoint("LEFT", row.name, "LEFT", 4, 0)
+        edit:SetPoint("RIGHT", row.name, "RIGHT", 0, 0)
+        edit:SetScript("OnEnterPressed", function(self)
+            local key = row.key
+            self:ClearFocus()
+            ns.Buttons.SetName(key, self:GetText())
+        end)
+        edit:SetScript("OnEscapePressed", function(self)
+            self:ClearFocus()
+        end)
+        edit:SetScript("OnEditFocusLost", function(self)
+            self:Hide()
+            row.name:Show()
+        end)
+        row.nameEdit = edit
+    end
+    FixPlace()
+    row.name:Hide()
+    row.nameEdit:SetText(row.name:GetText())
+    row.nameEdit:Show()
+    row.nameEdit:SetFocus()
+    row.nameEdit:HighlightText()
+end
+
 -- A row of the list (template: SatelliteButtonListRowTemplate, see UI/Templates.xml): the grip, a
--- checkbox (shown in the menu or not), the icon and name, the alert dot's toggle, and the arrows.
+-- checkbox (shown in the menu or not), the icon and name (right-click it to rename the button),
+-- the alert dot's toggle, and the arrows.
 local RowMixin = {}
 _G.SatelliteButtonListRowMixin = RowMixin
 
@@ -384,6 +419,11 @@ function RowMixin:OnLoad()
     end
     self.alert:HookScript("OnEnter", ShowAlertToggleTooltip)
     self.alert:HookScript("OnLeave", GameTooltip_Hide)
+    self:HookScript("OnMouseUp", function(_, mouseButton)
+        if mouseButton == "RightButton" then
+            StartRename(self)
+        end
+    end)
 end
 
 -- data: { button, index, count }.
@@ -395,6 +435,10 @@ function RowMixin:Init(data)
     self.check:SetChecked(isShown)
     ns.LauncherButton.SetIconTexture(self.icon, button)
     self.icon:SetDesaturated(not isShown)
+    -- A reused row may still be renaming another button.
+    if self.nameEdit and self.nameEdit:IsShown() then
+        self.nameEdit:ClearFocus()
+    end
     self.name:SetText(button.label)
     self.name:SetFontObject(isShown and "GameFontHighlight" or "GameFontDisable")
     SetAlertToggleOn(self.alert, not ns.Buttons.IsQuiet(button.key))
@@ -413,7 +457,8 @@ local function CreateButtonsPage()
     page.hint:SetPoint("TOPLEFT")
     page.hint:SetWidth(GetListWidth())
     page.hint:SetJustifyH("LEFT")
-    page.hint:SetText(L["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."])
+    page.hint:SetText(L["Untick a button to take it out of the menu; a hand-made one goes back to the minimap. Drag a row, or use its arrows, to change the order."]
+        .. " " .. L["Right-click a name to rename it."])
 
     -- The list, with a thin scroll bar on its right.
     page.scrollBox = CreateFrame("Frame", nil, page, "WowScrollBoxList")
@@ -551,10 +596,10 @@ local function CreatePanel()
         self:StopMovingOrSizing()
         -- Satellite places it again next time, not the game's layout file.
         self:SetUserPlaced(false)
-        isFixed = true
+        isFixed, isPlayerPlaced = true, true
     end)
     panel:SetScript("OnHide", function()
-        isFixed = false
+        isFixed, isPlayerPlaced = false, false
     end)
     -- Escape closes it, like Blizzard's windows.
     tinsert(UISpecialFrames, panel:GetName())
@@ -603,6 +648,10 @@ local function CreatePanel()
             if ns.IconStack.IsInPrisma() then
                 options[#options + 1] = { "Prisma", "prisma" }
             end
+            -- Each with a small picture of it, as it is for this character now.
+            for _, option in ipairs(options) do
+                option[1] = ns.IconStack.GetSymbolLabel(option[2], option[1])
+            end
             return options
         end, function()
             -- Prisma's logo after leaving the guild, or a choice that's gone, shows Satellite's
@@ -614,6 +663,15 @@ local function CreatePanel()
             return "satellite"
         end, function(value)
             ns.db.discSymbols = value
+        end),
+        imageAnimation = CreateDropdown(L["Image animation"], {
+            { L["Glow"], "glow" },
+            { L["Turn"], "turn" },
+            { L["None"], "none" },
+        }, function()
+            return ns.db.imageAnimation
+        end, function(value)
+            ns.db.imageAnimation = value
         end),
         imageColors = CreateDropdown(L["Image colors"], {
             { L["Full color"], "full" },
@@ -722,6 +780,20 @@ local function CreatePanel()
             FixPlace()
             ns.Launcher.ResetPositions()
         end),
+        settingsHeader = CreateHeader(L["Settings"]),
+        -- Reloads the interface, after asking (see Core.lua); until then it shows as it was.
+        characterSettings = CreateCheckbox(L["Settings for this character only"], function()
+            return ns.HasCharacterSettings()
+        end, function(value)
+            if value ~= ns.HasCharacterSettings() then
+                StaticPopup_Show("SATELLITE_CHARACTER_SETTINGS", nil, nil, value)
+            end
+        end, L["Off, all your characters share them. Switching reloads the interface."]),
+        -- Asks first (see Core.lua).
+        resetAll = CreateButton(L["Reset all settings"], function()
+            FixPlace()
+            StaticPopup_Show("SATELLITE_RESET_SETTINGS")
+        end),
     }
     panel:Hide()
 end
@@ -798,6 +870,9 @@ local function GetColumns(tab)
                 { rows.positionHeader, launcher.isMovable },
                 { rows.locked, launcher.isMovable },
                 { rows.reset, launcher.isMovable },
+                { rows.settingsHeader, true },
+                { rows.characterSettings, true },
+                { rows.resetAll, true },
             },
         }
     else
@@ -813,6 +888,7 @@ local function GetColumns(tab)
                 { rows.discSymbols, hasSymbol },
                 -- A logo has its own colours, or the border's.
                 { rows.imageColors, hasSymbol and ns.IconStack.ShowsImage() },
+                { rows.imageAnimation, hasSymbol and ns.IconStack.ShowsImage() },
                 -- A minimap that isn't round has no whole compass to take the arrow from.
                 { rows.replaceCompassArrow, isArrow and ns.Launcher.IsMinimapRound() },
                 { rows.gap, isArrow and not ns.Compass.IsReplaced() },
@@ -885,6 +961,21 @@ local function UpdatePanel()
 end
 
 -- Opening and closing ---------------------------------------------------------------------------
+
+-- While the launcher is dragged, the panel stays where it is on the screen, out of the way.
+function Settings.Detach()
+    if Settings.IsShown() then
+        FixPlace()
+    end
+end
+
+-- The launcher was let go of: the panel goes beside the menu again, which opens where the
+-- launcher now is (see Launcher.Refresh), unless the player put the panel somewhere.
+function Settings.Attach()
+    if Settings.IsShown() and not isPlayerPlaced then
+        isFixed = false
+    end
+end
 
 function Settings.IsShown()
     return panel ~= nil and panel:IsShown()

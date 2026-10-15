@@ -38,6 +38,11 @@ local IMAGE_TINTS = {
     silver = CreateColor(0.86, 0.88, 0.93, 1),
     bronze = CreateColor(0.95, 0.7, 0.48, 1),
 }
+-- How they come alive while hovered or open (ns.db.imageAnimation): "glow" (a light of the image
+-- over it, this bright at most), "turn" (a little, this far, against the clock, and stays there)
+-- or "none".
+local GLOW_ALPHA = 0.45
+local TURN_ANGLE = math.rad(20)
 local SPEC_IMAGE = { trim = 0.07 }
 local EMBLEM_IMAGE = { trim = 0.12 }
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
@@ -47,12 +52,14 @@ function IconStack.IsInPrisma()
     return GetGuildInfo("player") == PRISMA_GUILD
 end
 
--- An image from texture's part (left, right, top, bottom), sized and trimmed as kind says.
-local function MakeImage(texture, left, right, top, bottom, kind)
+-- An image from texture's part (left, right, top, bottom), sized and trimmed as kind says. aspect
+-- is how many times wider a step in the texture's coordinates is across than down (its texture
+-- isn't always square), to turn it without stretching it (1 if nil).
+local function MakeImage(texture, left, right, top, bottom, kind, aspect)
     local trimX, trimY = (right - left) * kind.trim, (bottom - top) * kind.trim
     return {
         texture = texture, coords = { left + trimX, right - trimX, top + trimY, bottom - trimY },
-        fillsBorder = true, isRound = true, isMasked = true, isSquare = true,
+        aspect = aspect or 1, fillsBorder = true, isRound = true, isMasked = true, isSquare = true,
     }
 end
 
@@ -64,7 +71,10 @@ local function MakeAtlasImage(atlas, kind)
     if not file then
         return nil
     end
-    return MakeImage(file, info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord, kind)
+    local left, right, top, bottom = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+    -- The whole texture's width and height in pixels, from the part's.
+    local aspect = (info.width / (right - left)) / (info.height / (bottom - top))
+    return MakeImage(file, left, right, top, bottom, kind, aspect)
 end
 
 local function GetClassImage()
@@ -72,25 +82,81 @@ local function GetClassImage()
     return MakeAtlasImage(GetClassAtlas(classFile), EMBLEM_IMAGE)
 end
 
--- The spec's icon; without a spec (a new character), the class's.
-local function GetSpecImage()
+-- The spec's icon (a file), or nil without a spec (a new character).
+local function GetSpecIcon()
     local index = C_SpecializationInfo.GetSpecialization()
-    local icon = index and select(4, C_SpecializationInfo.GetSpecializationInfo(index))
+    return index and select(4, C_SpecializationInfo.GetSpecializationInfo(index))
+end
+
+-- The spec's icon; without a spec, the class's.
+local function GetSpecImage()
+    local icon = GetSpecIcon()
     if not icon then
         return GetClassImage()
     end
     return MakeImage(icon, 0, 1, 0, 1, SPEC_IMAGE)
 end
 
--- The active hero talent tree's emblem; without one (below the level for it), the spec's icon.
-local function GetHeroImage()
+-- The active hero talent tree's emblem (an atlas), or nil below the level for one.
+local function GetHeroAtlas()
     local subTreeID = C_ClassTalents.GetActiveHeroTalentSpec()
     local configID = C_ClassTalents.GetActiveConfigID()
     local info = subTreeID and configID and C_Traits.GetSubTreeInfo(configID, subTreeID)
-    return MakeAtlasImage(info and info.iconElementID, EMBLEM_IMAGE) or GetSpecImage()
+    return info and info.iconElementID
+end
+
+-- The hero talent tree's emblem; without one, the spec's icon.
+local function GetHeroImage()
+    return MakeAtlasImage(GetHeroAtlas(), EMBLEM_IMAGE) or GetSpecImage()
 end
 
 local IMAGES = { classImage = GetClassImage, specImage = GetSpecImage, heroImage = GetHeroImage }
+
+-- A small picture of a symbol for the settings' dropdown, as text markup (see GetSymbolPreview).
+local PREVIEW_SIZE = 16
+
+local function GetClassPreview()
+    local _, classFile = UnitClass("player")
+    return CreateAtlasMarkup(GetClassAtlas(classFile), PREVIEW_SIZE, PREVIEW_SIZE)
+end
+
+local function GetSpecPreview()
+    local icon = GetSpecIcon()
+    if not icon then
+        return GetClassPreview()
+    end
+    -- Its edge cropped, as the launcher does (64 pixels, 4 off each side).
+    return format("|T%s:%d:%d:0:0:64:64:4:60:4:60|t", icon, PREVIEW_SIZE, PREVIEW_SIZE)
+end
+
+local PREVIEWS = {
+    -- Satellite's icon, the logo in its frame.
+    satellite = function()
+        return format("|T%sIcon:%d:%d|t", ns.MEDIA, PREVIEW_SIZE, PREVIEW_SIZE)
+    end,
+    prisma = function()
+        local coords = LOGOS.prisma.coords
+        local width = Round(PREVIEW_SIZE * (coords[2] - coords[1]) / (coords[4] - coords[3]))
+        return format("|T%s:%d:%d:0:0:256:256:%d:%d:%d:%d|t", LOGOS.prisma.texture, PREVIEW_SIZE, width,
+            Round(coords[1] * 256), Round(coords[2] * 256), Round(coords[3] * 256), Round(coords[4] * 256))
+    end,
+    classImage = GetClassPreview,
+    specImage = GetSpecPreview,
+    -- The hero talent tree's emblem, or the spec's icon without one (as GetHeroImage).
+    heroImage = function()
+        local atlas = GetHeroAtlas()
+        if atlas and C_Texture.GetAtlasInfo(atlas) then
+            return CreateAtlasMarkup(atlas, PREVIEW_SIZE, PREVIEW_SIZE)
+        end
+        return GetSpecPreview()
+    end,
+}
+
+-- A symbol's name ("satellite", "classImage"...) with a small picture of it before it, for the
+-- settings' dropdown.
+function IconStack.GetSymbolLabel(symbols, name)
+    return PREVIEWS[symbols]() .. " " .. name
+end
 
 -- The logo or image shown: Satellite's logo, unless the player chose another (Prisma's, while
 -- they're in the guild).
@@ -113,6 +179,27 @@ end
 function IconStack.GetSymbolKey()
     local logo = GetLogo()
     return format("%s %.4f %.4f", tostring(logo.texture), logo.coords[1], logo.coords[3])
+end
+
+-- Shows texture's part coords (left, right, top, bottom) turned by angle (radians) round its
+-- middle: the part's corners turn in the texture instead (SetRotation would show the rest of the
+-- texture the part is cut from). Its corners show a little of what's around it, which the round
+-- cut hides.
+local function SetTurnedCoords(texture, coords, aspect, angle)
+    local left, right, top, bottom = coords[1], coords[2], coords[3], coords[4]
+    local centerX, centerY = (left + right) / 2, (top + bottom) / 2
+    local halfX, halfY = (right - left) / 2 * aspect, (bottom - top) / 2
+    local cos, sin = math.cos(angle), math.sin(angle)
+    local function Corner(signX, signY)
+        local x, y = signX * halfX, signY * halfY
+        return centerX + (x * cos - y * sin) / aspect, centerY + x * sin + y * cos
+    end
+    local upperLeftX, upperLeftY = Corner(-1, -1)
+    local lowerLeftX, lowerLeftY = Corner(-1, 1)
+    local upperRightX, upperRightY = Corner(1, -1)
+    local lowerRightX, lowerRightY = Corner(1, 1)
+    ---@diagnostic disable-next-line: redundant-parameter
+    texture:SetTexCoord(upperLeftX, upperLeftY, lowerLeftX, lowerLeftY, upperRightX, upperRightY, lowerRightX, lowerRightY)
 end
 
 -- Moving textures (the logo grows, its buttons turn) aren't snapped to whole pixels: snapped,
@@ -139,6 +226,13 @@ function IconStack.Create(frame, anchor)
     stack.logoMask = frame:CreateMaskTexture()
     stack.logoMask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
     stack.logoMask:SetAllPoints(stack.logo)
+    -- The image's glow: itself again, added on top as light.
+    stack.logoGlow = frame:CreateTexture(nil, "ARTWORK", nil, 7)
+    stack.logoGlow:SetAllPoints(stack.logo)
+    stack.logoGlow:SetBlendMode("ADD")
+    stack.logoGlow:AddMaskTexture(stack.logoMask)
+    KeepOffPixelGrid(stack.logoGlow)
+    stack.logoGlow:Hide()
     stack.orbiter = frame:CreateTexture(nil, "ARTWORK", nil, 7)
     stack.orbiter:SetAllPoints(stack.logo)
     KeepOffPixelGrid(stack.orbiter)
@@ -164,6 +258,16 @@ local function Place(stack)
     if logo.orbiter then
         stack.orbiter:SetRotation(stack.angle)
     end
+    if logo.fillsBorder then
+        -- An image turns a little, against the clock (its part turning the other way in the
+        -- texture, whose coordinates run down), or glows, as set; with the hover, not the orbit.
+        local animation = ns.db.imageAnimation
+        local angle = animation == "turn" and TURN_ANGLE * stack.spread or 0
+        SetTurnedCoords(stack.logo, coords, logo.aspect, angle)
+        if animation == "glow" then
+            stack.logoGlow:SetAlpha(GLOW_ALPHA * stack.spread)
+        end
+    end
 end
 
 -- Sizes the stack for a button buttonSize across (its smaller side), with its middle x, y from the
@@ -174,6 +278,12 @@ function IconStack.Layout(stack, buttonSize, x, y)
     local logo = GetLogo()
     stack.logoInfo = logo
     stack.orbiter:SetShown(logo.orbiter ~= nil)
+    local glows = logo.fillsBorder == true and ns.db.imageAnimation == "glow"
+    stack.logoGlow:SetShown(glows)
+    if glows then
+        stack.logoGlow:SetTexture(logo.texture)
+        stack.logoGlow:SetTexCoord(unpack(logo.coords))
+    end
     stack.logoOutline:SetShown(logo.isRound == true)
     local isMasked = logo.isMasked == true
     if isMasked ~= stack.isMasked then
@@ -190,8 +300,10 @@ function IconStack.Layout(stack, buttonSize, x, y)
     -- An image in grey, tinted or not, as set.
     local tint = logo.fillsBorder and IMAGE_TINTS[ns.db.imageColors] or nil
     stack.logo:SetDesaturated(tint ~= nil)
+    stack.logoGlow:SetDesaturated(tint ~= nil)
     color = tint or color
     stack.logo:SetVertexColor(color:GetRGB())
+    stack.logoGlow:SetVertexColor(color:GetRGB())
     if logo.orbiter then
         stack.orbiter:SetTexture(logo.orbiter)
         stack.orbiter:SetVertexColor(color:GetRGB())

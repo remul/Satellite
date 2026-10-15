@@ -86,13 +86,22 @@ local function GetMenuDirection()
     return outward
 end
 
+-- On the ring, at its place.
+local function PlaceButton()
+    button:ClearAllPoints()
+    button:SetPoint("CENTER", Minimap, "CENTER", ns.Launcher.GetMinimapEdgePoint(GetDegrees(), RING_SHARE))
+end
+
+-- The way the menu opens, as last drawn.
+local menuDirection
+
 function Style:Refresh()
     local size = GetSize()
     button:SetSize(size, size)
-    button:ClearAllPoints()
-    button:SetPoint("CENTER", Minimap, "CENTER", ns.Launcher.GetMinimapEdgePoint(GetDegrees(), RING_SHARE))
+    PlaceButton()
     UpdateFrameLevels()
     local direction = GetMenuDirection()
+    menuDirection = direction
     opener:Layout(direction, size)
     local reach = opener:GetMenuReach() + MENU_GAP
     ns.Menu.Place(frame, button, "CENTER", direction == "LEFT" and -reach or reach, 0, direction)
@@ -129,9 +138,20 @@ local function GetCursorDegrees()
     return math.deg(math.atan2(y / scale - centerY, x / scale - centerX))
 end
 
+-- Only moved, every frame; drawn again only when its menu would open the other way. Letting go
+-- redraws it (see Launcher.SetupMover).
 local function FollowCursor()
-    ns.db.positions.satellite = { degrees = (GetCursorDegrees() + grabDegrees) % 360 }
-    Style:Refresh()
+    -- The saved place's table is reused, not made anew every frame.
+    local position = ns.db.positions.satellite
+    if not position then
+        position = {}
+        ns.db.positions.satellite = position
+    end
+    position.degrees = (GetCursorDegrees() + grabDegrees) % 360
+    PlaceButton()
+    if GetMenuDirection() ~= menuDirection then
+        Style:Refresh()
+    end
 end
 
 function Style:OnDragStart()

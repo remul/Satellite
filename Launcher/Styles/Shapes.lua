@@ -131,12 +131,15 @@ local function CreateStyle(key)
         opener:Layout(direction, size, x, y)
     end
 
-    -- Docked on an edge, at the place the player dragged it to, or beside the minimap. Returns
-    -- the edge it's docked on.
-    local function Place()
+    -- Docked on an edge, at the place the player dragged it to, or beside the minimap; with
+    -- isMoveOnly (while dragged, on the same edge), its shape is as it was. Returns the edge it's
+    -- docked on.
+    local function Place(isMoveOnly)
         local position = ns.Launcher.GetPosition("shape")
         local edge = position and position.edge
-        Layout(edge)
+        if not isMoveOnly then
+            Layout(edge)
+        end
         button:ClearAllPoints()
         if edge then
             -- On the screen, however long the button (the place may come from the side bar).
@@ -187,19 +190,23 @@ local function CreateStyle(key)
         return shape, "CENTER", x, y
     end
 
+    -- The way the menu opens: docked, away from the edge; otherwise as set (see openDirection),
+    -- or toward the middle.
+    local function GetMenuDirection(edge)
+        local setting = ns.db.openDirection
+        if edge then
+            return EDGES[edge].direction
+        elseif WAYS[setting] then
+            return setting
+        end
+        return ns.Launcher.GetDirection(button)
+    end
+
     function Style:Refresh()
         local edge = Place()
         dockedEdge = edge
         ns.Menu.SetFrameLevel(button:GetFrameLevel() + 1, Theme.MENU_STRATA)
-        -- Docked: away from the edge; otherwise as set (see openDirection), or toward the middle.
-        local setting = ns.db.openDirection
-        if edge then
-            direction = EDGES[edge].direction
-        elseif WAYS[setting] then
-            direction = setting
-        else
-            direction = ns.Launcher.GetDirection(button)
-        end
+        direction = GetMenuDirection(edge)
         LayoutIcons(edge)
         -- From the button's side: past the chevron.
         local way = WAYS[direction]
@@ -231,6 +238,9 @@ local function CreateStyle(key)
         local width, height = UIParent:GetWidth(), UIParent:GetHeight()
         local halfWidth, halfHeight = GetSize(key)
         halfWidth, halfHeight = halfWidth / 2, halfHeight / 2
+        -- The saved place's table is reused while it stays the same kind (docked or not), not made
+        -- anew every frame.
+        local saved = ns.Launcher.GetPosition("shape")
         local position
         -- The edge nearest the shape's side, and how far the shape's side and the cursor are from it.
         local edge, along, distance = ns.Launcher.GetNearestEdge(x, y, halfWidth, halfHeight)
@@ -240,14 +250,25 @@ local function CreateStyle(key)
             -- Along the edge as far as the corner; the menu moves onto the screen by itself (see
             -- Menu.Place).
             local room = IsVertical(edge) and (height - dock.height) / 2 or (width - dock.width) / 2
-            position = { edge = edge, offset = math.max(-room, math.min(room, along)) }
+            position = saved and saved.edge and saved or {}
+            position.edge, position.offset = edge, math.max(-room, math.min(room, along))
+        else
+            position = saved and saved.x and saved or {}
+            position.x = math.max(halfWidth, math.min(width - halfWidth, x))
+            position.y = math.max(halfHeight, math.min(height - halfHeight, y))
         end
-        position = position or {
-            x = math.max(halfWidth, math.min(width - halfWidth, x)),
-            y = math.max(halfHeight, math.min(height - halfHeight, y)),
-        }
         ns.Launcher.SetShapePosition(position)
-        Style:Refresh()
+        -- Only moved, every frame; drawn again only when it docks on another edge (or comes off
+        -- one), or its menu would open the other way. Letting go redraws it (see
+        -- Launcher.SetupMover).
+        if position.edge ~= dockedEdge then
+            Style:Refresh()
+            return
+        end
+        Place(true)
+        if GetMenuDirection(position.edge) ~= direction then
+            Style:Refresh()
+        end
     end
 
     function Style:OnDragStart()

@@ -26,19 +26,19 @@ open). The menu stays open while you change things, so you see them at once.
   - The border colour of the launcher and its menu (gold, silver, bronze or a quiet version of
     your class colour), and the launcher's symbol: by default Satellite's logo, whose buttons
     orbit while you hover it, or your class, spec or hero talent image, in its own colours, grey,
-    or tinted gold, silver or bronze.
+    or tinted gold, silver or bronze, glowing or turning a little while you hover it.
   - The menu: button size and shape (circle, minimap button, square or diamond), how many
     buttons go down each column, and what it shows (icons, icons and names, or names only).
 - **Buttons** tab: untick buttons to take them out of the menu, drag them or use the arrows to
   change the order, or sort them by name again. Click a button's red dot to turn its alerts off
-  (or on again). Below the list: hide the addons' own minimap
+  (or on again), and right-click its name to rename it. Below the list: hide the addons' own minimap
   buttons (or keep them), collect hand-made minimap buttons too, show addons without a minimap
   button too (only in the addon compartment, or only for broker displays), and include
   Blizzard's expansion button.
 - **Behavior** tab:
   - Open the menu on mouseover. It closes when you click anywhere else, or instead a moment
-    after the mouse leaves it; and after you click a button (on at first, never on
-    right-click). For the circle and square, which way it opens:
+    after the mouse leaves it; and after you click a button (on at first; after a right-click
+    only if the addon opened no dropdown). For the circle and square, which way it opens:
     toward the middle of the screen, left, right, up or down.
   - A dot on the launcher when an addon changes its icon to show something new (BugSack's bug
     turns red), until you open the menu; the buttons that changed show it too. Icons that change
@@ -46,6 +46,8 @@ open). The menu stays open while you change things, so you see them at once.
     an addon adds a button while you play.
   - Locked or not: unlocked, drag the launcher to move it; locked, Shift-drag still moves it.
     "Reset position" puts it back.
+  - Settings for this character only, or shared by all your characters (switching reloads the
+    interface), and "Reset all settings".
 
 **In Blizzard's Options**, on the AddOns tab (or type `/satellite`): the same button options, and
 a button that opens the launcher settings.

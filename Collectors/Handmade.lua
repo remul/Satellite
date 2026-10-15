@@ -213,18 +213,37 @@ function Handmade.Attach(button, menuButton)
     end
 end
 
--- The addon's LibDBIcon button (shown or not), from the same addon folder as its icon, by its
--- object's name and the object; or nil. That one is in the menu already.
+-- The LibDataBroker objects with a LibDBIcon button (shown or not), by the addon folder their
+-- icon is in (simplified, see Compartment.GetIconFolder): [folder] = { name, dataObject }. Found
+-- once per change of the buttons (new objects and LibDBIcon buttons are changes too), not for
+-- each hand-made button each time.
+local twins, twinsChangeCount
+
+local function GetTwins()
+    local changeCount = ns.Buttons.GetChangeCount()
+    if twinsChangeCount ~= changeCount then
+        twinsChangeCount = changeCount
+        twins = {}
+        for name, dataObject in LDB:DataObjectIterator() do
+            local folder = ns.Compartment.GetIconFolder(dataObject.icon)
+            if folder and not twins[folder] and ns.Broker.GetMinimapButton(dataObject) then
+                twins[folder] = { name, dataObject }
+            end
+        end
+    end
+    return twins
+end
+
+-- The addon's LibDBIcon button, by its object's name and the object; or nil. That one is in the
+-- menu already.
 local function GetBrokerTwin(button)
     if not button.addon then
         return nil
     end
-    local addon = ns.Compartment.Simplify(button.addon)
-    for name, dataObject in LDB:DataObjectIterator() do
-        if ns.Compartment.GetIconFolder(dataObject.icon) == addon
-            and ns.Broker.GetMinimapButton(dataObject) then
-            return name, dataObject
-        end
+    button.addonFolder = button.addonFolder or ns.Compartment.Simplify(button.addon)
+    local twin = GetTwins()[button.addonFolder]
+    if twin then
+        return twin[1], twin[2]
     end
     return nil
 end
@@ -235,9 +254,9 @@ local function UpdateLabel(button)
     local name, dataObject = GetBrokerTwin(button)
     local twinLabel = name and ns.Broker.GetLabel(name, dataObject)
     if twinLabel and twinLabel ~= button.title then
-        button.label = format("%s (%s)", button.title, twinLabel)
+        ns.Buttons.SetOwnLabel(button, format("%s (%s)", button.title, twinLabel))
     else
-        button.label = button.title
+        ns.Buttons.SetOwnLabel(button, button.title)
     end
 end
 

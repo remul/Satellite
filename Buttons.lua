@@ -6,7 +6,8 @@ local _, ns = ...
 local Buttons = {}
 ns.Buttons = Buttons
 
--- [key] = { key, source, name, label, ... }; the fields after label depend on the source.
+-- [key] = { key, source, name, label, ... }; the fields after label depend on the source. label is
+-- the name the player gave it (see SetName) or ownLabel, the one its collector gave it.
 local buttons = {}
 -- All buttons sorted by label, made again only after a change (see GetAll).
 local sorted
@@ -14,10 +15,18 @@ local sorted
 -- Functions to call when buttons were added or removed (see OnChanged).
 local listeners = {}
 local isNotifyPending = false
+-- Counts the changes, at once (the listeners hear of them at the end of the frame): what's worked
+-- out from the buttons can be kept until it changes (see GetChangeCount).
+local changeCount = 0
+
+function Buttons.GetChangeCount()
+    return changeCount
+end
 
 -- Tells the listeners once per frame, however many buttons changed in it (at login, dozens).
 -- Also for changes that decide which buttons the launcher shows (see IsInLauncher).
 function Buttons.NotifyChanged()
+    changeCount = changeCount + 1
     if isNotifyPending then
         return
     end
@@ -50,11 +59,18 @@ local function IsSame(a, b)
     return true
 end
 
+-- Sets button's label from its own and the name the player gave it, and what it's sorted by.
+local function ApplyName(button)
+    button.label = ns.db.buttonNames[button.key] or button.ownLabel
+    button.sortKey = button.label:lower()
+end
+
 -- Adds button, or replaces the one with the same key. Returns true if it's new. Nothing changes
 -- (and no one is told) if the same button is already there.
 function Buttons.Add(button)
     local old = buttons[button.key]
-    button.sortKey = button.label:lower()
+    button.ownLabel = button.label
+    ApplyName(button)
     if old and IsSame(old, button) then
         return false
     end
@@ -78,6 +94,31 @@ end
 
 function Buttons.Get(key)
     return buttons[key]
+end
+
+-- A collector found a new name for button (see Handmade): its own label, kept behind the
+-- player's.
+function Buttons.SetOwnLabel(button, label)
+    if label ~= button.ownLabel then
+        button.ownLabel = label
+        ApplyName(button)
+        sorted = nil
+    end
+end
+
+-- The player's name for the button with key; nil, empty or its own name gives it back its own.
+function Buttons.SetName(key, name)
+    name = name and strtrim(name) or ""
+    local button = buttons[key]
+    if name == "" or (button and name == button.ownLabel) then
+        name = nil
+    end
+    ns.db.buttonNames[key] = name
+    if button then
+        ApplyName(button)
+        sorted = nil
+    end
+    Buttons.NotifyChanged()
 end
 
 local function CompareButtons(a, b)
@@ -263,6 +304,9 @@ function Buttons.Prune()
     for key in pairs(ns.db.quietButtons) do
         isSaved[key] = true
     end
+    for key in pairs(ns.db.buttonNames) do
+        isSaved[key] = true
+    end
     local isGone = {}
     for key in pairs(isSaved) do
         -- Saved before Satellite kept track: counted from now.
@@ -289,6 +333,7 @@ function Buttons.Prune()
     for key in pairs(isGone) do
         ns.db.hiddenButtons[key] = nil
         ns.db.quietButtons[key] = nil
+        ns.db.buttonNames[key] = nil
         ns:Debug("Pruned", key)
     end
 end

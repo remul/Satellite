@@ -89,9 +89,30 @@ function Blizzard.GetIcon(button)
     return texture:GetAtlas() or texture:GetTexture()
 end
 
--- Opens or closes the landing page, as a click on the original does.
+-- Whether a click in combat waits for it to end (see Click).
+local isClickPending = false
+
+-- Opens or closes the landing page, as a click on the original does. Not in combat: Blizzard
+-- opens its panels from an addon's code only out of it (ShowUIPanel; it would show "Interface
+-- action failed"), so the click waits until combat ends.
 function Blizzard.Click(button)
-    button.frame:ToggleLandingPage()
+    if not InCombatLockdown() then
+        button.frame:ToggleLandingPage()
+        return
+    end
+    if not isClickPending then
+        isClickPending = true
+        ns:Print(ns.L["The landing page opens when combat ends."])
+        local function OnCombatEnded()
+            ns:UnregisterEvent("PLAYER_REGEN_ENABLED", OnCombatEnded)
+            isClickPending = false
+            local frame = ExpansionLandingPageMinimapButton
+            if frame and IsAvailable(frame) then
+                frame:ToggleLandingPage()
+            end
+        end
+        ns:RegisterEvent("PLAYER_REGEN_ENABLED", OnCombatEnded)
+    end
 end
 
 -- Called once ns.db is loaded; the button comes with Blizzard_Minimap.

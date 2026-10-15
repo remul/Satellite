@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.0
+
+- **Rename buttons**: right-click a name in the Buttons tab. The menu's names get as much room as
+  the longest needs, so "Plumber (Expansion Summary)" isn't cut off any more.
+- **Settings for one character**, or shared by all your characters (Behavior tab; switching
+  reloads the interface), and **Reset all settings**.
+- **The images come alive**: your class, spec or hero talent image glows (or turns a little)
+  while you hover the launcher ("Image animation").
+- **Pictures in the symbol dropdown**, showing the logo and your own images.
+- **The menu closes after a right-click** on a button too, unless the addon opened a dropdown
+  there.
+- **Dragging the launcher**: the settings stay where they are and the menu closes until you let
+  go; smoother, as only the launcher moves while you drag.
+- **Blizzard's expansion button in combat** opens its page once combat ends, instead of an
+  "Interface action failed" error.
+- Settings Satellite no longer uses are removed from your saved settings.
+
 ## 0.5.0
 
 - **Satellite's logo** on the launcher at first: its three buttons orbit while you hover it. Or
