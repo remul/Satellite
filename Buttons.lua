@@ -185,6 +185,16 @@ function Buttons.IsHidden(key)
     return isHidden
 end
 
+-- Whether the button with key shows the alert dot when its icon changes (see Alert).
+function Buttons.IsQuiet(key)
+    return ns.db.quietButtons[key] == true
+end
+
+function Buttons.SetQuiet(key, isQuiet)
+    ns.db.quietButtons[key] = isQuiet or nil
+    ns.Alert.Forget(key)
+end
+
 function Buttons.SetHidden(key, isHidden)
     if isHidden == IsHiddenByDefault(key) then
         ns.db.hiddenButtons[key] = nil
@@ -250,6 +260,9 @@ function Buttons.Prune()
     for key in pairs(ns.db.hiddenButtons) do
         isSaved[key] = true
     end
+    for key in pairs(ns.db.quietButtons) do
+        isSaved[key] = true
+    end
     local isGone = {}
     for key in pairs(isSaved) do
         -- Saved before Satellite kept track: counted from now.
@@ -275,6 +288,7 @@ function Buttons.Prune()
     ns.db.buttonOrder = order
     for key in pairs(isGone) do
         ns.db.hiddenButtons[key] = nil
+        ns.db.quietButtons[key] = nil
         ns:Debug("Pruned", key)
     end
 end

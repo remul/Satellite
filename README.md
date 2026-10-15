@@ -30,7 +30,8 @@ open). The menu stays open while you change things, so you see them at once.
   - The menu: button size and shape (circle, minimap button, square or diamond), how many
     buttons go down each column, and what it shows (icons, icons and names, or names only).
 - **Buttons** tab: untick buttons to take them out of the menu, drag them or use the arrows to
-  change the order, or sort them by name again. Below the list: hide the addons' own minimap
+  change the order, or sort them by name again. Click a button's red dot to turn its alerts off
+  (or on again). Below the list: hide the addons' own minimap
   buttons (or keep them), collect hand-made minimap buttons too, show addons without a minimap
   button too (only in the addon compartment, or only for broker displays), and include
   Blizzard's expansion button.
@@ -40,8 +41,9 @@ open). The menu stays open while you change things, so you see them at once.
     right-click). For the circle and square, which way it opens:
     toward the middle of the screen, left, right, up or down.
   - A dot on the launcher when an addon changes its icon to show something new (BugSack's bug
-    turns red), until you open the menu; the buttons that changed show it too. And a short
-    pulse when an addon adds a button while you play.
+    turns red), until you open the menu; the buttons that changed show it too. Icons that change
+    as you zone in or out (BigWigs lights up in an instance) don't count. And a short pulse when
+    an addon adds a button while you play.
   - Locked or not: unlocked, drag the launcher to move it; locked, Shift-drag still moves it.
     "Reset position" puts it back.
 

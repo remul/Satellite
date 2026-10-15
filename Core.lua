@@ -55,6 +55,8 @@ local DEFAULTS = {
     -- false for one hidden by default that they put in (see Buttons.IsHidden).
     buttonOrder = {},
     hiddenButtons = {},
+    -- The buttons whose icon changes don't show the alert dot (see Alert): [key] = true.
+    quietButtons = {},
     -- When each of those keys' buttons was last there: [key] = time(). Keys not seen for a while
     -- (an addon removed) are taken out of both (see Buttons.Prune).
     buttonsSeen = {},

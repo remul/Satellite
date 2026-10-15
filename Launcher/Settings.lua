@@ -290,8 +290,44 @@ local function CreateDragGrip(parent)
     return grip
 end
 
+-- The toggle for a button's alert dot (see Alert): the dot itself, lit while it's on.
+local function CreateAlertToggle(parent, onClick)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(18, 18)
+    button.outline = button:CreateTexture(nil, "ARTWORK", nil, 0)
+    button.outline:SetTexture(Theme.DISC)
+    button.outline:SetVertexColor(Theme.OUTLINE:GetRGBA())
+    button.outline:SetSize(10, 10)
+    button.outline:SetPoint("CENTER")
+    button.dot = button:CreateTexture(nil, "ARTWORK", nil, 1)
+    button.dot:SetTexture(Theme.DISC)
+    button.dot:SetSize(7, 7)
+    button.dot:SetPoint("CENTER")
+    button:SetScript("OnClick", onClick)
+    return button
+end
+
+-- The dot lit (red) while the button shows alerts, grey while it's quiet.
+local function SetAlertToggleOn(button, isOn)
+    button.isOn = isOn
+    if isOn then
+        button.dot:SetVertexColor(ns.Alert.DOT_COLOR:GetRGBA())
+    else
+        button.dot:SetVertexColor(0.4, 0.4, 0.4, 1)
+    end
+    button.dot:SetAlpha(isOn and 1 or 0.6)
+end
+
+local function ShowAlertToggleTooltip(button)
+    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+    GameTooltip_SetTitle(GameTooltip, L["Alert dot"])
+    GameTooltip_AddNormalLine(GameTooltip, L["A red dot on the launcher when this addon changes its icon."])
+    GameTooltip_AddInstructionLine(GameTooltip, button.isOn and L["Click to turn it off."] or L["Click to turn it on."])
+    GameTooltip:Show()
+end
+
 -- A row of the list (template: SatelliteButtonListRowTemplate, see UI/Templates.xml): the grip, a
--- checkbox (shown in the menu or not), the icon and name, and the arrows.
+-- checkbox (shown in the menu or not), the icon and name, the alert dot's toggle, and the arrows.
 local RowMixin = {}
 _G.SatelliteButtonListRowMixin = RowMixin
 
@@ -325,9 +361,15 @@ function RowMixin:OnLoad()
         ns.Buttons.Move(self.key, -1)
     end)
     self.up:SetPoint("RIGHT", self.down, "LEFT", -2, 0)
+    self.alert = CreateAlertToggle(self, function(toggle)
+        ns.Buttons.SetQuiet(self.key, toggle.isOn)
+        SetAlertToggleOn(toggle, not toggle.isOn)
+        ShowAlertToggleTooltip(toggle)
+    end)
+    self.alert:SetPoint("RIGHT", self.up, "LEFT", -4, 0)
     self.name = self:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     self.name:SetPoint("LEFT", self.icon, "RIGHT", 6, 0)
-    self.name:SetPoint("RIGHT", self.up, "LEFT", -6, 0)
+    self.name:SetPoint("RIGHT", self.alert, "LEFT", -6, 0)
     self.name:SetJustifyH("LEFT")
     self.name:SetWordWrap(false)
     -- Lights up while hovered, also over its checkbox and arrows.
@@ -336,10 +378,12 @@ function RowMixin:OnLoad()
     end
     self:SetScript("OnEnter", UpdateHighlight)
     self:SetScript("OnLeave", UpdateHighlight)
-    for _, child in ipairs({ self.check, self.up, self.down }) do
+    for _, child in ipairs({ self.check, self.alert, self.up, self.down }) do
         child:HookScript("OnEnter", UpdateHighlight)
         child:HookScript("OnLeave", UpdateHighlight)
     end
+    self.alert:HookScript("OnEnter", ShowAlertToggleTooltip)
+    self.alert:HookScript("OnLeave", GameTooltip_Hide)
 end
 
 -- data: { button, index, count }.
@@ -353,6 +397,10 @@ function RowMixin:Init(data)
     self.icon:SetDesaturated(not isShown)
     self.name:SetText(button.label)
     self.name:SetFontObject(isShown and "GameFontHighlight" or "GameFontDisable")
+    SetAlertToggleOn(self.alert, not ns.Buttons.IsQuiet(button.key))
+    -- Only where it counts: a button out of the menu has no dot, nor do all of them while alerts
+    -- are off.
+    self.alert:SetShown(isShown and ns.db.showAlerts)
     SetArrowEnabled(self.up, data.index > 1)
     SetArrowEnabled(self.down, data.index < data.count)
 end

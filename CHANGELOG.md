@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0
+
+- **Satellite's logo** on the launcher at first: its three buttons orbit while you hover it. Or
+  show your **class, spec or hero talent image** instead, in its own colours, grey, or tinted
+  gold, silver or bronze. The coloured discs are gone.
+- **The menu closes when you click elsewhere**, or instead a moment after the mouse leaves it
+  ("Closes" in the Behavior tab).
+- **Circle, square and side bar share one place**: switch between them and the launcher stays
+  where it is.
+- **Docking is more precise**: the circle and square dock only once you push them against an
+  edge, and slide along it right into the corners.
+- **Dragging is smoother**: the menu closes while you drag, and the minimap button no longer
+  jumps to the cursor when you grab it.
+- **The launcher stays behind your bags** and action bars; its open menu goes over them.
+- **Fewer false alerts**: icons that change as you zone in or out (BigWigs) don't show the dot,
+  and you can turn the dot off for any button in the Buttons tab.
+- **Plumber**: its Expansion Summary stays on the minimap at first, and its buttons have clearer
+  names.
+- Buttons per column is a dropdown, so the menu doesn't jump while you choose; more room between
+  the Launcher tab's settings; the tooltip keeps clear of the launcher; circle buttons' icons are
+  a pixel bigger.
+- Fixed: the orbit animation flickered.
+
 ## 0.4.0
 
 - **Hand-made minimap buttons**: buttons that addons make themselves, without LibDBIcon (e.g.

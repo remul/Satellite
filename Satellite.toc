@@ -2,7 +2,7 @@
 ## Title: Satellite
 ## Notes: Gathers the minimap buttons of your addons into one launcher.
 ## Author: Remul
-## Version: 0.4.0
+## Version: 0.5.0
 ## SavedVariables: SatelliteDB
 ## IconTexture: Interface\AddOns\Satellite\Media\Icon
 ## AddonCompartmentFunc: Satellite_OnAddonCompartmentClick

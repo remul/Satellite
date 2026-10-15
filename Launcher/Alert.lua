@@ -5,26 +5,36 @@ local _, ns = ...
 -- buttons that changed show the same dot until the menu closes. An icon that changes back (the
 -- errors read) clears it too. Each style says where its dot goes (Style:GetAlertPoint); the
 -- Always open style has none, its menu shows everything already.
+--
+-- Some addons use their icon to show a state that follows the zone (BigWigs lights up in an
+-- instance): changes just after a loading screen or a zone change are taken as the new normal.
+-- The player can also turn the dot off for single buttons (Buttons.SetQuiet).
 local Alert = {}
 ns.Alert = Alert
 
 local Theme = ns.Theme
 
--- Addons set their icons as they load, so changes count from this many seconds after login.
+-- Addons set their icons as they load, so changes count from this many seconds after login; and
+-- after a loading screen or a zone change, from this many seconds after.
 local START_DELAY = 5
+local ZONE_DELAY = 5
 -- The dot's size (without its outline) and colour; it pulses gently.
 local DOT_SIZE = 8
 local DOT_COLOR = CreateColor(0.95, 0.27, 0.2, 1)
+Alert.DOT_COLOR = DOT_COLOR
 local PULSE_ALPHA, PULSE_TIME = 0.55, 0.8
 
 -- [key] = what its icon looked like when the menu was last opened (see LauncherButton.GetIconLook),
 -- and [key] = true for the buttons whose icon differs now.
 local seen, changed = {}, {}
 local isWatching = false
+-- Until when (GetTime()) icon changes are the new normal, after zoning.
+local quietUntil = 0
 local dot
 
 local function IsWatched(button)
     return ns.Buttons.IsInLauncher(button) and not ns.Buttons.IsHidden(button.key)
+        and not ns.Buttons.IsQuiet(button.key)
 end
 
 local function CreateDot()
@@ -89,13 +99,20 @@ function Alert.Check(key)
     local button = ns.Buttons.Get(key)
     if not button or not IsWatched(button) then
         changed[key] = nil
-    elseif seen[key] == nil then
-        -- New since the menu was opened: what it shows now is what it started with.
+    elseif seen[key] == nil or GetTime() < quietUntil then
+        -- New since the menu was opened, or just after zoning: what it shows now is its normal.
         seen[key] = ns.LauncherButton.GetIconLook(button)
+        changed[key] = nil
     else
         changed[key] = ns.LauncherButton.GetIconLook(button) ~= seen[key] or nil
     end
     Alert.Update()
+end
+
+-- Takes the button's icon as it is now as its normal (e.g. its dot was just turned back on).
+function Alert.Forget(key)
+    seen[key], changed[key] = nil, nil
+    Alert.Check(key)
 end
 
 -- The menu opened: the buttons that changed show their dot, and the launcher's goes.
@@ -120,4 +137,9 @@ function Alert.Start()
         Remember()
         isWatching = true
     end)
+    local function OnZoneChanged()
+        quietUntil = GetTime() + ZONE_DELAY
+    end
+    ns:RegisterEvent("PLAYER_ENTERING_WORLD", OnZoneChanged)
+    ns:RegisterEvent("ZONE_CHANGED_NEW_AREA", OnZoneChanged)
 end
